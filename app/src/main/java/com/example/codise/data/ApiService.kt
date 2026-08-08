@@ -1,5 +1,8 @@
 package com.example.codise.data
 
+import android.content.Context
+import okhttp3.Cache
+import okhttp3.OkHttpClient
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -8,6 +11,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.Header
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.File
 
 interface ApiService {
     @POST("api/auth/register/")
@@ -27,13 +31,25 @@ interface ApiService {
 
     companion object {
         const val BASE_URL = "https://codisecore-production.up.railway.app/"
+        private var instance: ApiService? = null
 
-        fun create(): ApiService {
-            return Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(ApiService::class.java)
+        fun getInstance(context: Context): ApiService {
+            return instance ?: synchronized(this) {
+                val cacheSize = (5 * 1024 * 1024).toLong() // 5 MB
+                val cache = Cache(context.cacheDir, cacheSize)
+
+                val okHttpClient = OkHttpClient.Builder()
+                    .cache(cache)
+                    .build()
+
+                Retrofit.Builder()
+                    .baseUrl(BASE_URL)
+                    .client(okHttpClient)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+                    .create(ApiService::class.java)
+                    .also { instance = it }
+            }
         }
     }
 }

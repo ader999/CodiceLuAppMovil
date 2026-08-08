@@ -1,7 +1,6 @@
 package com.example.codise
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -27,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
+import com.example.codise.GalleryCarousel
 import com.example.codise.data.City
 import com.example.codise.ui.theme.AzulPetroleo
 import com.example.codise.ui.theme.Codise路Theme
@@ -42,7 +42,8 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTube
 
 @Composable
 fun CityDetailScreen(
-    city: City
+    city: City,
+    onBack: () -> Unit
 ) {
     var selectedVideoId by remember { mutableStateOf<String?>(null) }
 
@@ -93,6 +94,21 @@ fun CityDetailScreen(
                         Text("Imagen de portada no disponible", color = AzulPetroleo, fontSize = 14.sp)
                     }
                 }
+            }
+
+            // Back Button
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .padding(top = 16.dp, start = 16.dp)
+                    .statusBarsPadding()
+                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Cerrar",
+                    tint = Color.White
+                )
             }
         }
 
@@ -164,45 +180,11 @@ fun CityDetailScreen(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-                ) {
-                    items(city.galeria) { item ->
-                        GalleryItemCard(item) { videoUrl ->
-                            extractYoutubeVideoId(videoUrl)?.let { videoId ->
-                                selectedVideoId = videoId
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (city.circuitos.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Circuitos Turísticos",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AzulPetroleo
-                )
-                city.circuitos.forEach { circuit ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = circuit.nombre, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text(text = circuit.descripcion, fontSize = 14.sp)
-                            Text(
-                                text = "Distancia: ${circuit.distanciaKm} km | Duración: ${circuit.duracionEstimada}",
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 4.dp),
-                                color = AzulPetroleo
-                            )
+                val shuffledGallery = remember(city.galeria) { city.galeria.shuffled() }
+                GalleryCarousel(gallery = shuffledGallery) { item ->
+                    item.videoUrl?.let { videoUrl ->
+                        extractYoutubeVideoId(videoUrl)?.let { videoId ->
+                            selectedVideoId = videoId
                         }
                     }
                 }
@@ -263,86 +245,6 @@ fun YouTubePlayer(
     )
 }
 
-@Composable
-fun GalleryItemCard(item: GalleryItem, onVideoClick: (String) -> Unit) {
-    val displayImage = item.imagen?.toFullUrl() 
-        ?: if (item.tipo == "Video" && item.videoUrl != null) {
-            extractYoutubeVideoId(item.videoUrl)?.let { getYoutubeThumbnailUrl(it) }
-        } else {
-            null
-        }
-
-    Card(
-        modifier = Modifier
-            .size(160.dp, 100.dp)
-            .clickable(enabled = item.videoUrl != null || item.imagen != null) { 
-                item.videoUrl?.let { onVideoClick(it) } 
-            },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (displayImage != null) {
-                AsyncImage(
-                    model = displayImage,
-                    contentDescription = item.titulo,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.DarkGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.PlayCircle,
-                        contentDescription = "Ver Video",
-                        tint = Color.White,
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-            }
-
-            // Overlay for videos to show play icon if image is also present
-            if (item.tipo == "Video") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.PlayCircle,
-                        contentDescription = "Ver Video",
-                        tint = Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            }
-
-            // Title overlay
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(vertical = 4.dp, horizontal = 8.dp)
-            ) {
-                Text(
-                    text = item.titulo,
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    fontWeight = FontWeight.Medium,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun CityDetailScreenPreview() {
@@ -374,7 +276,8 @@ fun CityDetailScreenPreview() {
                     GalleryItem(1, 1, null, "Catedral de León", "Imagen", "https://example.com/cat.jpg", null),
                     GalleryItem(2, 1, null, "Documental León", "Video", null, "https://youtube.com/watch?v=123")
                 )
-            )
+            ),
+            onBack = {}
         )
     }
 }

@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
-    private val apiService = ApiService.create()
+    private val apiService = ApiService.getInstance(application)
     private val sessionManager = SessionManager(application)
 
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)

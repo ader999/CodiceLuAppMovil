@@ -12,17 +12,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.codise.data.City
 import com.example.codise.data.User
@@ -62,18 +67,47 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
     val profileViewModel: ProfileViewModel = viewModel()
     val profileUiState by profileViewModel.uiState.collectAsState()
     val mainViewModel: MainViewModel = viewModel()
+    val visitedPoiIds by mainViewModel.visitedPoiIds.collectAsState()
 
     var currentScreen by remember { mutableStateOf("main") }
-    var selectedCity by remember { mutableStateOf<City?>(null) }
+    val selectedCity = mainViewModel.selectedCity
+    var selectedTab by remember { mutableIntStateOf(0) }
+
+    // Auto-refresh when returning to foreground
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                mainViewModel.fetchCities()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         topBar = {
             TopBar(
+                title = null,
                 onProfileClick = { currentScreen = "profile" },
                 onLogoClick = { currentScreen = "main" }
             )
         },
-        bottomBar = { BottomNavBar(onHomeClick = { currentScreen = "main" }) },
+        bottomBar = {
+            BottomNavBar(
+                currentScreen = currentScreen,
+                selectedTab = selectedTab,
+                onHomeClick = { currentScreen = "main" },
+                onTabSelected = { selectedTab = it },
+                onBackClick = {
+                    if (currentScreen == "circuit_detail") {
+                        currentScreen = "circuits_and_poi"
+                    }
+                }
+            )
+        },
         containerColor = Celeste
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
@@ -81,7 +115,16 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                 "main" -> MainScreen(
                     mainViewModel = mainViewModel,
                     onCityInfoClick = { city ->
-                        selectedCity = city
+                        mainViewModel.selectCity(city.id)
+                        currentScreen = "city_detail"
+                    },
+                    onCityPinClick = { city ->
+                        mainViewModel.selectCity(city.id)
+                        selectedTab = 0
+                        currentScreen = "circuits_and_poi"
+                    },
+                    onCityClick = { city ->
+                        mainViewModel.selectCity(city.id)
                         currentScreen = "city_detail"
                     }
                 )
@@ -94,10 +137,35 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                     profileUiState = profileUiState,
                     onLogout = onLogout
                 )
+                "circuits_and_poi" -> {
+                    selectedCity?.let { city ->
+                        CircuitsAndPoiScreen(
+                            city = city,
+                            selectedTab = selectedTab,
+                            onVerMasClick = { circuit ->
+                                mainViewModel.selectCircuit(circuit.id)
+                                currentScreen = "circuit_detail"
+                            }
+                        )
+                    }
+                }
+                "circuit_detail" -> {
+                    val circuit = mainViewModel.selectedCircuit
+                    if (circuit != null) {
+                        CircuitDetailScreen(
+                            circuit = circuit,
+                            visitedPoiIds = visitedPoiIds,
+                            onToggleVisited = { poiId -> mainViewModel.toggleVisited(poiId) }
+                        )
+                    } else {
+                        currentScreen = "circuits_and_poi"
+                    }
+                }
                 "city_detail" -> {
                     selectedCity?.let { city ->
                         CityDetailScreen(
-                            city = city
+                            city = city,
+                            onBack = { currentScreen = "main" }
                         )
                     }
                 }
@@ -106,33 +174,44 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     mainViewModel: MainViewModel,
-    onCityInfoClick: (City) -> Unit
+    onCityInfoClick: (City) -> Unit,
+    onCityPinClick: (City) -> Unit,
+    onCityClick: (City) -> Unit
 ) {
     val cities by mainViewModel.cities
     val isLoading by mainViewModel.isLoading
     val error by mainViewModel.error
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    PullToRefreshBox(
+        isRefreshing = isLoading,
+        onRefresh = { mainViewModel.fetchCities(force = true) },
+        modifier = Modifier.fillMaxSize()
     ) {
-        MainCard(
-            cities = cities,
-            isLoading = isLoading,
-            error = error,
-            onRefresh = { mainViewModel.fetchCities() },
-            onInfoClick = onCityInfoClick
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            MainCard(
+                cities = cities,
+                isLoading = isLoading,
+                error = error,
+                onRefresh = { mainViewModel.fetchCities(force = true) },
+                onInfoClick = onCityInfoClick,
+                onPinClick = onCityPinClick,
+                onCityClick = onCityClick
+            )
+        }
     }
 }
 
 @Composable
-fun TopBar(onProfileClick: () -> Unit, onLogoClick: () -> Unit) {
+fun TopBar(title: String? = null, onProfileClick: () -> Unit, onLogoClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,7 +223,7 @@ fun TopBar(onProfileClick: () -> Unit, onLogoClick: () -> Unit) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.clickable { onLogoClick() }
+            modifier = Modifier.clickable { onLogoClick() }.weight(1f)
         ) {
             // Stylized Logo Triangle
             Box(
@@ -159,11 +238,13 @@ fun TopBar(onProfileClick: () -> Unit, onLogoClick: () -> Unit) {
                     .background(GoldColor)
             )
             Text(
-                text = "Codice路",
+                text = title ?: "Codice路",
                 color = GoldColor,
-                fontSize = 26.sp,
+                fontSize = if (title != null) 20.sp else 26.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 10.dp)
+                modifier = Modifier.padding(start = 10.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         
@@ -184,7 +265,9 @@ fun MainCard(
     isLoading: Boolean,
     error: String?,
     onRefresh: () -> Unit,
-    onInfoClick: (City) -> Unit
+    onInfoClick: (City) -> Unit,
+    onPinClick: (City) -> Unit,
+    onCityClick: (City) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -241,7 +324,9 @@ fun MainCard(
                         items(cities) { city ->
                             LocationItem(
                                 name = city.nombre,
-                                onInfoClick = { onInfoClick(city) }
+                                onInfoClick = { onInfoClick(city) },
+                                onPinClick = { onPinClick(city) },
+                                onCityClick = { onCityClick(city) }
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = GrisClaro)
                         }
@@ -253,7 +338,7 @@ fun MainCard(
 }
 
 @Composable
-fun LocationItem(name: String, onInfoClick: () -> Unit) {
+fun LocationItem(name: String, onInfoClick: () -> Unit, onPinClick: () -> Unit, onCityClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -263,7 +348,9 @@ fun LocationItem(name: String, onInfoClick: () -> Unit) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onCityClick() }
         ) {
             Icon(
                 imageVector = Icons.Default.Star,
@@ -286,23 +373,31 @@ fun LocationItem(name: String, onInfoClick: () -> Unit) {
             IconButton(onClick = onInfoClick) {
                 Icon(
                     imageVector = Icons.Default.Info,
-                    contentDescription = "Información",
+                    contentDescription = "Información y Datos Históricos",
                     tint = AzulPetroleo,
                     modifier = Modifier.size(28.dp)
                 )
             }
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = null,
-                tint = GoldColor,
-                modifier = Modifier.size(32.dp)
-            )
+            IconButton(onClick = onPinClick) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = "Circuitos y Puntos de Interés",
+                    tint = GoldColor,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun BottomNavBar(onHomeClick: () -> Unit) {
+fun BottomNavBar(
+    currentScreen: String,
+    selectedTab: Int,
+    onHomeClick: () -> Unit,
+    onTabSelected: (Int) -> Unit,
+    onBackClick: () -> Unit = {}
+) {
     val threeMoundsShape = GenericShape { size, _ ->
         val w = size.width
         val h = size.height
@@ -334,21 +429,87 @@ fun BottomNavBar(onHomeClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 45.dp),
+                .padding(horizontal = 25.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Menu, null, tint = GoldColor, modifier = Modifier.size(36.dp))
-            Icon(
-                Icons.Default.Home, 
-                null, 
-                tint = GoldColor, 
-                modifier = Modifier
-                    .size(42.dp)
-                    .padding(bottom = 12.dp)
-                    .clickable { onHomeClick() }
-            )
-            Icon(Icons.Default.Explore, null, tint = GoldColor, modifier = Modifier.size(36.dp))
+            if (currentScreen == "circuits_and_poi") {
+                // Circuitos Tab
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clickable { onTabSelected(0) }
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Menu,
+                        null,
+                        tint = if (selectedTab == 0) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Text(
+                        "Circuitos",
+                        color = if (selectedTab == 0) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Icon(
+                    Icons.Default.Home,
+                    null,
+                    tint = GoldColor,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .padding(bottom = 12.dp)
+                        .clickable { onHomeClick() }
+                )
+
+                // Puntos Tab
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clickable { onTabSelected(1) }
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Explore,
+                        null,
+                        tint = if (selectedTab == 1) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Text(
+                        "Puntos",
+                        color = if (selectedTab == 1) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                // Default Navigation
+                Icon(
+                    imageVector = if (currentScreen == "circuit_detail") Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Menu,
+                    contentDescription = if (currentScreen == "circuit_detail") "Regresar" else "Menú",
+                    tint = GoldColor,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clickable {
+                            if (currentScreen == "circuit_detail") {
+                                onBackClick()
+                            }
+                        }
+                )
+                Icon(
+                    Icons.Default.Home,
+                    null,
+                    tint = GoldColor,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .padding(bottom = 12.dp)
+                        .clickable { onHomeClick() }
+                )
+                Icon(Icons.Default.Explore, null, tint = GoldColor, modifier = Modifier.size(36.dp))
+            }
         }
     }
 }
@@ -365,7 +526,9 @@ fun MainCardPreview() {
             isLoading = false,
             error = null,
             onRefresh = {},
-            onInfoClick = {}
+            onInfoClick = {},
+            onPinClick = {},
+            onCityClick = {}
         )
     }
 }
