@@ -1,9 +1,13 @@
 package com.example.codise
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,18 +24,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.codise.data.City
 import com.example.codise.data.User
 import com.example.codise.ui.theme.*
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,11 +76,77 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
     val profileViewModel: ProfileViewModel = viewModel()
     val profileUiState by profileViewModel.uiState.collectAsState()
     val mainViewModel: MainViewModel = viewModel()
+    val eventsViewModel: EventsViewModel = viewModel()
     val visitedPoiIds by mainViewModel.visitedPoiIds.collectAsState()
+    val context = LocalContext.current
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     var currentScreen by remember { mutableStateOf("main") }
     val selectedCity = mainViewModel.selectedCity
     var selectedTab by remember { mutableIntStateOf(0) }
+
+    var poiIdToMarkAsVisited by remember { mutableStateOf<Int?>(null) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
+            poiIdToMarkAsVisited?.let { poiId ->
+                try {
+                    fusedLocationClient.getCurrentLocation(
+                        Priority.PRIORITY_HIGH_ACCURACY,
+                        CancellationTokenSource().token
+                    ).addOnSuccessListener { location ->
+                        mainViewModel.toggleVisited(poiId, location?.latitude, location?.longitude)
+                    }.addOnFailureListener {
+                        mainViewModel.toggleVisited(poiId)
+                    }
+                } catch (e: SecurityException) {
+                    mainViewModel.toggleVisited(poiId)
+                }
+            }
+        } else {
+            // Permission denied, mark as visited locally without cloud sync (or at least without GPS)
+            poiIdToMarkAsVisited?.let { mainViewModel.toggleVisited(it) }
+        }
+        poiIdToMarkAsVisited = null
+    }
+
+    val requestLocationAndMark = { poiId: Int ->
+        if (visitedPoiIds.contains(poiId)) {
+            // Already visited, just unmark locally
+            mainViewModel.toggleVisited(poiId)
+        } else {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                try {
+                    fusedLocationClient.getCurrentLocation(
+                        Priority.PRIORITY_HIGH_ACCURACY,
+                        CancellationTokenSource().token
+                    ).addOnSuccessListener { location ->
+                        mainViewModel.toggleVisited(poiId, location?.latitude, location?.longitude)
+                    }.addOnFailureListener {
+                        mainViewModel.toggleVisited(poiId)
+                    }
+                } catch (e: SecurityException) {
+                    mainViewModel.toggleVisited(poiId)
+                }
+            } else {
+                poiIdToMarkAsVisited = poiId
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            }
+        }
+    }
 
     // Auto-refresh when returning to foreground
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -100,7 +175,12 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                 currentScreen = currentScreen,
                 selectedTab = selectedTab,
                 onHomeClick = { currentScreen = "main" },
-                onTabSelected = { selectedTab = it },
+                onTabSelected = { 
+                    selectedTab = it
+                    if (it == 2) {
+                        currentScreen = "events"
+                    }
+                },
                 onBackClick = {
                     if (currentScreen == "circuit_detail") {
                         currentScreen = "circuits_and_poi"
@@ -128,15 +208,23 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                         currentScreen = "city_detail"
                     }
                 )
-                "profile" -> ProfileContent(
-                    user = user,
-                    onBack = { currentScreen = "main" },
-                    onSave = { updatedUser: User ->
-                        profileViewModel.updateProfile(token, updatedUser)
-                    },
-                    profileUiState = profileUiState,
-                    onLogout = onLogout
-                )
+                "profile" -> {
+                    val businessUiState by profileViewModel.businessUiState.collectAsState()
+                    val cities by mainViewModel.cities
+                    ProfileContent(
+                        user = user,
+                        token = token,
+                        onBack = { currentScreen = "main" },
+                        onSave = { updatedUser: User ->
+                            profileViewModel.updateProfile(token, updatedUser)
+                        },
+                        profileUiState = profileUiState,
+                        businessUiState = businessUiState,
+                        onRegisterBusiness = { t, b -> profileViewModel.registerBusiness(t, b) },
+                        cities = cities,
+                        onLogout = onLogout
+                    )
+                }
                 "circuits_and_poi" -> {
                     selectedCity?.let { city ->
                         CircuitsAndPoiScreen(
@@ -152,10 +240,11 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                 "circuit_detail" -> {
                     val circuit = mainViewModel.selectedCircuit
                     if (circuit != null) {
+                        val visitedPois by mainViewModel.visitedPois.collectAsState()
                         CircuitDetailScreen(
                             circuit = circuit,
-                            visitedPoiIds = visitedPoiIds,
-                            onToggleVisited = { poiId -> mainViewModel.toggleVisited(poiId) }
+                            visitedPois = visitedPois,
+                            onToggleVisited = { poiId -> requestLocationAndMark(poiId) }
                         )
                     } else {
                         currentScreen = "circuits_and_poi"
@@ -168,6 +257,28 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                             onBack = { currentScreen = "main" }
                         )
                     }
+                }
+                "events" -> {
+                    EventsScreen(
+                        viewModel = eventsViewModel,
+                        canUpload = user.esProtagonista,
+                        onUploadClick = { currentScreen = "upload_event" }
+                    )
+                }
+                "upload_event" -> {
+                    val cities by mainViewModel.cities
+                    val isUploading by eventsViewModel.isUploading
+                    val uploadSuccess by eventsViewModel.uploadSuccess
+                    UploadEventScreen(
+                        cities = cities,
+                        onBack = { 
+                            currentScreen = "events"
+                            eventsViewModel.resetUploadState()
+                        },
+                        onUpload = { eventsViewModel.uploadEvent(it) },
+                        isUploading = isUploading,
+                        uploadSuccess = uploadSuccess
+                    )
                 }
             }
         }
@@ -488,14 +599,22 @@ fun BottomNavBar(
             } else {
                 // Default Navigation
                 Icon(
-                    imageVector = if (currentScreen == "circuit_detail") Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Menu,
-                    contentDescription = if (currentScreen == "circuit_detail") "Regresar" else "Menú",
-                    tint = GoldColor,
+                    imageVector = if (currentScreen == "circuit_detail") {
+                        Icons.AutoMirrored.Filled.ArrowBack
+                    } else if (currentScreen == "events") {
+                        Icons.Default.Event
+                    } else {
+                        Icons.Default.Event
+                    },
+                    contentDescription = if (currentScreen == "circuit_detail") "Regresar" else "Eventos",
+                    tint = if (currentScreen == "events") GoldColor else GoldColor.copy(alpha = 0.5f),
                     modifier = Modifier
                         .size(36.dp)
                         .clickable {
                             if (currentScreen == "circuit_detail") {
                                 onBackClick()
+                            } else {
+                                onTabSelected(2) // Events tab
                             }
                         }
                 )

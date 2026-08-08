@@ -6,5 +6,6 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "visited_pois")
 data class VisitedPoi(
     @PrimaryKey val poiId: Int,
-    val visitedAt: Long = System.currentTimeMillis()
+    val visitedAt: Long = System.currentTimeMillis(),
+    val isValidated: Boolean = false
 )

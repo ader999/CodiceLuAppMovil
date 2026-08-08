@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.youtube.player)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.play.services.location)
     ksp(libs.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -29,6 +29,37 @@ interface ApiService {
     @GET("api/ciudades/")
     suspend fun getCities(): Response<List<City>>
 
+    @POST("api/visitas/")
+    suspend fun registerVisit(
+        @Header("Authorization") token: String,
+        @Body visit: VisitRequest
+    ): Response<VisitResponse>
+
+    @GET("api/visitas/ids/")
+    suspend fun getVisitedIds(
+        @Header("Authorization") token: String
+    ): Response<List<Int>>
+
+    @GET("api/visitas/")
+    suspend fun getVisits(
+        @Header("Authorization") token: String
+    ): Response<List<VisitResponse>>
+
+    @GET("api/eventos/")
+    suspend fun getEvents(): Response<List<Event>>
+
+    @POST("api/eventos/")
+    suspend fun createEvent(
+        @Header("Authorization") token: String,
+        @Body event: EventRequest
+    ): Response<Event>
+
+    @POST("api/empresas/")
+    suspend fun registerBusiness(
+        @Header("Authorization") token: String,
+        @Body business: Business
+    ): Response<Business>
+
     companion object {
         const val BASE_URL = "https://codisecore-production.up.railway.app/"
         private var instance: ApiService? = null
