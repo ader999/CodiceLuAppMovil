@@ -36,6 +36,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.codise.data.City
+import com.example.codise.data.Event
 import com.example.codise.data.User
 import com.example.codise.ui.theme.*
 import com.google.android.gms.location.LocationServices
@@ -82,6 +83,7 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     var currentScreen by remember { mutableStateOf("main") }
+    var selectedEvent by remember { mutableStateOf<Event?>(null) }
     val selectedCity = mainViewModel.selectedCity
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -177,7 +179,7 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                 onHomeClick = { currentScreen = "main" },
                 onTabSelected = { 
                     selectedTab = it
-                    if (it == 2) {
+                    if (it == 2 || it == 3) {
                         currentScreen = "events"
                     }
                 },
@@ -262,8 +264,20 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                     EventsScreen(
                         viewModel = eventsViewModel,
                         canUpload = user.esProtagonista,
-                        onUploadClick = { currentScreen = "upload_event" }
+                        onUploadClick = { currentScreen = "upload_event" },
+                        onEventClick = { event ->
+                            selectedEvent = event
+                            currentScreen = "event_detail"
+                        },
+                        viewMode = selectedTab
                     )
+                }
+                "event_detail" -> {
+                    selectedEvent?.let { event ->
+                        EventDetailScreen(
+                            event = event
+                        )
+                    }
                 }
                 "upload_event" -> {
                     val cities by mainViewModel.cities
@@ -601,8 +615,6 @@ fun BottomNavBar(
                 Icon(
                     imageVector = if (currentScreen == "circuit_detail") {
                         Icons.AutoMirrored.Filled.ArrowBack
-                    } else if (currentScreen == "events") {
-                        Icons.Default.Event
                     } else {
                         Icons.Default.Event
                     },
@@ -614,7 +626,7 @@ fun BottomNavBar(
                             if (currentScreen == "circuit_detail") {
                                 onBackClick()
                             } else {
-                                onTabSelected(2) // Events tab
+                                onTabSelected(2) // Events tab (List)
                             }
                         }
                 )
@@ -627,7 +639,23 @@ fun BottomNavBar(
                         .padding(bottom = 12.dp)
                         .clickable { onHomeClick() }
                 )
-                Icon(Icons.Default.Explore, null, tint = GoldColor, modifier = Modifier.size(36.dp))
+                Icon(
+                    imageVector = if (currentScreen == "events") {
+                        if (selectedTab == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
+                    } else {
+                        Icons.Default.Explore
+                    },
+                    contentDescription = if (currentScreen == "events") "Alternar vista" else "Explorar",
+                    tint = GoldColor,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clickable {
+                            if (currentScreen == "events") {
+                                // Toggle between List (2) and Calendar (3)
+                                onTabSelected(if (selectedTab == 2) 3 else 2)
+                            }
+                        }
+                )
             }
         }
     }
