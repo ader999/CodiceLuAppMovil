@@ -78,6 +78,7 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
     val profileUiState by profileViewModel.uiState.collectAsState()
     val mainViewModel: MainViewModel = viewModel()
     val eventsViewModel: EventsViewModel = viewModel()
+    val publicationsViewModel: PublicationsViewModel = viewModel()
     val visitedPoiIds by mainViewModel.visitedPoiIds.collectAsState()
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -166,8 +167,13 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
 
     Scaffold(
         topBar = {
+            val topBarTitle = when (currentScreen) {
+                "upload_publication" -> "Nueva Publicación"
+                "upload_event" -> "Subir Nuevo Evento"
+                else -> null
+            }
             TopBar(
-                title = null,
+                title = topBarTitle,
                 onProfileClick = { currentScreen = "profile" },
                 onLogoClick = { currentScreen = "main" }
             )
@@ -183,9 +189,18 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                         currentScreen = "events"
                     }
                 },
+                onExploreClick = { currentScreen = "publications" },
                 onBackClick = {
-                    if (currentScreen == "circuit_detail") {
-                        currentScreen = "circuits_and_poi"
+                    when (currentScreen) {
+                        "circuit_detail" -> currentScreen = "circuits_and_poi"
+                        "upload_publication" -> {
+                            currentScreen = "publications"
+                            publicationsViewModel.resetUploadState()
+                        }
+                        "upload_event" -> {
+                            currentScreen = "events"
+                            eventsViewModel.resetUploadState()
+                        }
                     }
                 }
             )
@@ -275,9 +290,43 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
                 "event_detail" -> {
                     selectedEvent?.let { event ->
                         EventDetailScreen(
-                            event = event
+                            event = event,
+                            eventsViewModel = eventsViewModel
                         )
                     }
+                }
+                "publications" -> {
+                    val selectedCityId = mainViewModel.selectedCity?.id
+                    LaunchedEffect(selectedCityId) {
+                        publicationsViewModel.fetchPublications(cityId = selectedCityId)
+                    }
+                    PublicationsScreen(
+                        viewModel = publicationsViewModel,
+                        onUploadClick = { currentScreen = "upload_publication" }
+                    )
+                }
+                "upload_publication" -> {
+                    val cities by mainViewModel.cities
+                    val eventsState by eventsViewModel.uiState
+                    val events = (eventsState as? EventsUiState.Success)?.events ?: emptyList()
+                    val isUploading by publicationsViewModel.isUploading
+                    val uploadSuccess by publicationsViewModel.uploadSuccess
+                    val errorMessage by publicationsViewModel.errorMessage
+
+                    UploadPublicationScreen(
+                        cities = cities,
+                        events = events,
+                        onBack = {
+                            currentScreen = "publications"
+                            publicationsViewModel.resetUploadState()
+                        },
+                        onUpload = { desc, city, business, event, uris ->
+                            publicationsViewModel.uploadPublication(desc, city, business, event, uris)
+                        },
+                        isUploading = isUploading,
+                        uploadSuccess = uploadSuccess,
+                        errorMessage = errorMessage
+                    )
                 }
                 "upload_event" -> {
                     val cities by mainViewModel.cities
@@ -521,6 +570,7 @@ fun BottomNavBar(
     selectedTab: Int,
     onHomeClick: () -> Unit,
     onTabSelected: (Int) -> Unit,
+    onExploreClick: () -> Unit = {},
     onBackClick: () -> Unit = {}
 ) {
     val threeMoundsShape = GenericShape { size, _ ->
@@ -612,18 +662,19 @@ fun BottomNavBar(
                 }
             } else {
                 // Default Navigation
+                val isBackScreen = currentScreen in listOf("circuit_detail", "upload_publication", "upload_event")
                 Icon(
-                    imageVector = if (currentScreen == "circuit_detail") {
+                    imageVector = if (isBackScreen) {
                         Icons.AutoMirrored.Filled.ArrowBack
                     } else {
                         Icons.Default.Event
                     },
-                    contentDescription = if (currentScreen == "circuit_detail") "Regresar" else "Eventos",
+                    contentDescription = if (isBackScreen) "Regresar" else "Eventos",
                     tint = if (currentScreen == "events") GoldColor else GoldColor.copy(alpha = 0.5f),
                     modifier = Modifier
                         .size(36.dp)
                         .clickable {
-                            if (currentScreen == "circuit_detail") {
+                            if (isBackScreen) {
                                 onBackClick()
                             } else {
                                 onTabSelected(2) // Events tab (List)
@@ -643,16 +694,18 @@ fun BottomNavBar(
                     imageVector = if (currentScreen == "events") {
                         if (selectedTab == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
                     } else {
-                        Icons.Default.Explore
+                        Icons.Default.PhotoLibrary
                     },
-                    contentDescription = if (currentScreen == "events") "Alternar vista" else "Explorar",
-                    tint = GoldColor,
+                    contentDescription = if (currentScreen == "events") "Alternar vista" else "Publicaciones",
+                    tint = if (currentScreen == "publications") GoldColor else GoldColor.copy(alpha = 0.5f),
                     modifier = Modifier
                         .size(36.dp)
                         .clickable {
                             if (currentScreen == "events") {
                                 // Toggle between List (2) and Calendar (3)
                                 onTabSelected(if (selectedTab == 2) 3 else 2)
+                            } else {
+                                onExploreClick()
                             }
                         }
                 )

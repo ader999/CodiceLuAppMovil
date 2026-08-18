@@ -2,6 +2,7 @@ package com.example.codise
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -41,24 +42,18 @@ fun UploadEventScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Subir Nuevo Evento", color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AzulPetroleo)
-            )
-        }
-    ) { padding ->
+    Card(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = BlancoBase),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
         Column(
             modifier = Modifier
-                .padding(padding)
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(20.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -66,7 +61,15 @@ fun UploadEventScreen(
                 value = titulo,
                 onValueChange = { titulo = it },
                 label = { Text("Título del Evento") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AzulPetroleo,
+                    unfocusedBorderColor = GrisClaro,
+                    focusedLabelColor = AzulPetroleo,
+                    cursorColor = AzulPetroleo,
+                    focusedTextColor = AzulPetroleo,
+                    unfocusedTextColor = AzulPetroleo
+                )
             )
 
             OutlinedTextField(
@@ -74,7 +77,15 @@ fun UploadEventScreen(
                 onValueChange = { descripcion = it },
                 label = { Text("Descripción") },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 3
+                minLines = 3,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AzulPetroleo,
+                    unfocusedBorderColor = GrisClaro,
+                    focusedLabelColor = AzulPetroleo,
+                    cursorColor = AzulPetroleo,
+                    focusedTextColor = AzulPetroleo,
+                    unfocusedTextColor = AzulPetroleo
+                )
             )
 
             ExposedDropdownMenuBox(
@@ -87,7 +98,14 @@ fun UploadEventScreen(
                     readOnly = true,
                     label = { Text("Ciudad") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AzulPetroleo,
+                        unfocusedBorderColor = GrisClaro,
+                        focusedLabelColor = AzulPetroleo,
+                        focusedTextColor = AzulPetroleo,
+                        unfocusedTextColor = AzulPetroleo
+                    )
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,
@@ -109,7 +127,15 @@ fun UploadEventScreen(
                 value = ubicacion,
                 onValueChange = { ubicacion = it },
                 label = { Text("Ubicación Específica") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AzulPetroleo,
+                    unfocusedBorderColor = GrisClaro,
+                    focusedLabelColor = AzulPetroleo,
+                    cursorColor = AzulPetroleo,
+                    focusedTextColor = AzulPetroleo,
+                    unfocusedTextColor = AzulPetroleo
+                )
             )
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -117,19 +143,35 @@ fun UploadEventScreen(
                     value = fechaInicio,
                     onValueChange = { fechaInicio = it },
                     label = { Text("Inicio (YYYY-MM-DD)") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AzulPetroleo,
+                        unfocusedBorderColor = GrisClaro,
+                        focusedLabelColor = AzulPetroleo,
+                        cursorColor = AzulPetroleo
+                    )
                 )
                 OutlinedTextField(
                     value = fechaFin,
                     onValueChange = { fechaFin = it },
                     label = { Text("Fin (YYYY-MM-DD)") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AzulPetroleo,
+                        unfocusedBorderColor = GrisClaro,
+                        focusedLabelColor = AzulPetroleo,
+                        cursorColor = AzulPetroleo
+                    )
                 )
             }
 
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Checkbox(checked = esGratuito, onCheckedChange = { esGratuito = it })
-                Text("Es gratuito")
+                Checkbox(
+                    checked = esGratuito, 
+                    onCheckedChange = { esGratuito = it },
+                    colors = CheckboxDefaults.colors(checkedColor = AzulPetroleo)
+                )
+                Text("Es gratuito", color = AzulPetroleo, fontWeight = FontWeight.Medium)
             }
 
             if (!esGratuito) {
@@ -137,11 +179,17 @@ fun UploadEventScreen(
                     value = precioEntrada,
                     onValueChange = { precioEntrada = it },
                     label = { Text("Precio de Entrada") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AzulPetroleo,
+                        unfocusedBorderColor = GrisClaro,
+                        focusedLabelColor = AzulPetroleo,
+                        cursorColor = AzulPetroleo
+                    )
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {

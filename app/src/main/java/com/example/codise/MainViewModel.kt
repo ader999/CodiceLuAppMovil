@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val apiService = ApiService.getInstance(application)
-    private val sessionManager = SessionManager(application)
+    private val sessionManager = SessionManager.getInstance(application)
     private val database = AppDatabase.getDatabase(application)
     private val visitedPoiDao = database.visitedPoiDao()
 

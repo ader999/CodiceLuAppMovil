@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
     private val apiService = ApiService.getInstance(application)
-    private val sessionManager = SessionManager(application)
+    private val sessionManager = SessionManager.getInstance(application)
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
     val uiState: StateFlow<ProfileUiState> = _uiState

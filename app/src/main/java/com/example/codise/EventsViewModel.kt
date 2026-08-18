@@ -9,6 +9,8 @@ import com.example.codise.data.ApiService
 import com.example.codise.data.Event
 import com.example.codise.data.EventRequest
 import com.example.codise.data.SessionManager
+import com.example.codise.utils.NetworkUtils
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 sealed class EventsUiState {
@@ -20,7 +22,8 @@ sealed class EventsUiState {
 
 class EventsViewModel(application: Application) : AndroidViewModel(application) {
     private val apiService = ApiService.getInstance(application)
-    private val sessionManager = SessionManager(application)
+    private val sessionManager = SessionManager.getInstance(application)
+    private val networkUtils = NetworkUtils(application)
 
     private val _uiState = mutableStateOf<EventsUiState>(EventsUiState.Idle)
     val uiState: State<EventsUiState> = _uiState
@@ -33,6 +36,26 @@ class EventsViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         fetchEvents()
+        observeConnectivity()
+    }
+
+    private fun observeConnectivity() {
+        viewModelScope.launch {
+            networkUtils.isConnected.collectLatest { isConnected ->
+                if (isConnected) {
+                    syncPendingAttendance()
+                }
+            }
+        }
+    }
+
+    private fun syncPendingAttendance() {
+        val pending = sessionManager.getPendingAttendance()
+        if (pending.isNotEmpty()) {
+            pending.forEach { eventId ->
+                registerAttendance(eventId)
+            }
+        }
     }
 
     fun fetchEvents() {
@@ -75,5 +98,28 @@ class EventsViewModel(application: Application) : AndroidViewModel(application) 
 
     fun resetUploadState() {
         _uploadSuccess.value = false
+    }
+
+    fun registerAttendance(eventId: Int) {
+        val session = sessionManager.getSession() ?: return
+        val token = "Bearer ${session.tokens.access}"
+
+        if (!networkUtils.hasInternet()) {
+            sessionManager.addPendingAttendance(eventId)
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = apiService.registerAttendance(token, eventId)
+                if (response.isSuccessful) {
+                    sessionManager.removePendingAttendance(eventId)
+                } else {
+                    sessionManager.addPendingAttendance(eventId)
+                }
+            } catch (e: Exception) {
+                sessionManager.addPendingAttendance(eventId)
+            }
+        }
     }
 }

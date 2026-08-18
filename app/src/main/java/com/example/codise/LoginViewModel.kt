@@ -14,15 +14,20 @@ import kotlinx.coroutines.launch
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val apiService = ApiService.getInstance(application)
-    private val sessionManager = SessionManager(application)
+    private val sessionManager = SessionManager.getInstance(application)
 
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState: StateFlow<LoginUiState> = _uiState
 
     init {
-        val savedSession = sessionManager.getSession()
-        if (savedSession != null) {
-            _uiState.value = LoginUiState.Success(savedSession)
+        viewModelScope.launch {
+            sessionManager.session.collect { session ->
+                if (session != null) {
+                    _uiState.value = LoginUiState.Success(session)
+                } else {
+                    _uiState.value = LoginUiState.Idle
+                }
+            }
         }
     }
 

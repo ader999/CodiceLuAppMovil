@@ -17,6 +17,8 @@ data class Event(
     @SerializedName("es_gratuito") val esGratuito: Boolean,
     @SerializedName("cupo_maximo") val cupoMaximo: Int?,
     val imagen: String?,
+    val latitud: Double?,
+    val longitud: Double?,
     @SerializedName("fecha_creacion") val fechaCreacion: String
 )
 
