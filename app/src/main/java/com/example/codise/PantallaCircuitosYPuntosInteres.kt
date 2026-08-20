@@ -51,6 +51,7 @@ fun PantallaCircuitosYPuntos(
         when (pestanaSeleccionada) {
             0 -> ListaCircuitos(ciudad.circuitos, alHacerClicEnVerMas)
             1 -> ListaPuntosInteres(ciudad.circuitos.flatMap { it.puntosInteres })
+            else -> ListaCircuitos(ciudad.circuitos, alHacerClicEnVerMas)
         }
     }
 }

@@ -99,6 +99,15 @@ fun ContenidoPerfil(
             )
         }
 
+        if (estadoUiPerfil is EstadoUiPerfil.Exito) {
+            Text(
+                text = "¡Perfil actualizado con éxito!",
+                color = Color(0xFF2E7D32),
+                modifier = Modifier.padding(bottom = 8.dp),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
         Button(
             onClick = {
                 val usuarioActualizado = usuario.copy(

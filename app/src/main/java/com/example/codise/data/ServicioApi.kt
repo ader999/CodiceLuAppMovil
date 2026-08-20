@@ -19,7 +19,7 @@ interface ServicioApi {
     @POST("api/auth/login/")
     suspend fun iniciarSesion(@Body credenciales: SolicitudLogin): Response<RespuestaAutenticacion>
 
-    @PATCH("api/auth/profile/update/")
+    @PATCH("api/auth/me/")
     suspend fun actualizarPerfil(
         @Header("Authorization") token: String,
         @Body usuario: Usuario

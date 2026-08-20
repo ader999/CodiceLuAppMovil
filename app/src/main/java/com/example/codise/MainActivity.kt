@@ -171,7 +171,6 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
     Scaffold(
         topBar = {
             val tituloBarraSuperior = when (pantallaActual) {
-                "upload_publication" -> "Nueva Publicación"
                 "upload_event" -> "Subir Nuevo Evento"
                 else -> null
             }
@@ -193,9 +192,22 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                     }
                 },
                 alHacerClicEnExplorar = { pantallaActual = "publications" },
+                alHacerClicEnSubirPublicacion = { pantallaActual = "upload_publication" },
                 alHacerClicEnAtras = {
                     when (pantallaActual) {
                         "circuit_detail" -> pantallaActual = "circuits_and_poi"
+                        "circuits_and_poi" -> {
+                            if (pestanaSeleccionada == 1) {
+                                pestanaSeleccionada = 0
+                            } else {
+                                pantallaActual = "main"
+                            }
+                        }
+                        "city_detail" -> pantallaActual = "main"
+                        "events" -> pantallaActual = "main"
+                        "event_detail" -> pantallaActual = "events"
+                        "publications" -> pantallaActual = "main"
+                        "profile" -> pantallaActual = "main"
                         "upload_publication" -> {
                             pantallaActual = "publications"
                             viewModelPublicaciones.reiniciarEstadoSubida()
@@ -204,6 +216,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                             pantallaActual = "events"
                             viewModelEventos.reiniciarEstadoSubida()
                         }
+                        else -> pantallaActual = "main"
                     }
                 }
             )
@@ -561,6 +574,7 @@ fun BarraNavegacionInferior(
     alHacerClicEnInicio: () -> Unit,
     alSeleccionarPestana: (Int) -> Unit,
     alHacerClicEnExplorar: () -> Unit = {},
+    alHacerClicEnSubirPublicacion: () -> Unit = {},
     alHacerClicEnAtras: () -> Unit = {}
 ) {
     val formaTresMonticulos = GenericShape { size, _ ->
@@ -595,108 +609,75 @@ fun BarraNavegacionInferior(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (pantallaActual == "circuits_and_poi") {
-                // Pestaña Circuitos
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable { alSeleccionarPestana(0) }
-                        .padding(horizontal = 8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Menu,
-                        null,
-                        tint = if (pestanaSeleccionada == 0) GoldColor else GoldColor.copy(alpha = 0.5f),
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Text(
-                        "Circuitos",
-                        color = if (pestanaSeleccionada == 0) GoldColor else GoldColor.copy(alpha = 0.5f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Icon(
-                    Icons.Default.Home,
-                    null,
-                    tint = GoldColor,
-                    modifier = Modifier
-                        .size(42.dp)
-                        .padding(bottom = 12.dp)
-                        .clickable { alHacerClicEnInicio() }
-                )
-
-                // Pestaña Puntos
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable { alSeleccionarPestana(1) }
-                        .padding(horizontal = 8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Explore,
-                        null,
-                        tint = if (pestanaSeleccionada == 1) GoldColor else GoldColor.copy(alpha = 0.5f),
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Text(
-                        "Puntos",
-                        color = if (pestanaSeleccionada == 1) GoldColor else GoldColor.copy(alpha = 0.5f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            } else {
-                // Navegación por defecto
-                val esPantallaConAtras = pantallaActual in listOf("circuit_detail", "upload_publication", "upload_event")
-                Icon(
-                    imageVector = if (esPantallaConAtras) {
-                        Icons.AutoMirrored.Filled.ArrowBack
-                    } else {
-                        Icons.Default.Event
-                    },
-                    contentDescription = if (esPantallaConAtras) "Regresar" else "Eventos",
-                    tint = if (pantallaActual == "events") GoldColor else GoldColor.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clickable {
-                            if (esPantallaConAtras) {
-                                alHacerClicEnAtras()
-                            } else {
-                                alSeleccionarPestana(2) // Pestaña de eventos (Lista)
-                            }
+            val esPantallaPrincipal = pantallaActual == "main"
+            
+            // Botón Izquierdo: Eventos en la pantalla principal, botón de retroceso en todas las demás vistas
+            Icon(
+                imageVector = if (esPantallaPrincipal) {
+                    Icons.Default.Event
+                } else {
+                    Icons.AutoMirrored.Filled.ArrowBack
+                },
+                contentDescription = if (esPantallaPrincipal) "Eventos" else "Regresar",
+                tint = if (esPantallaPrincipal) GoldColor.copy(alpha = 0.5f) else GoldColor,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable {
+                        if (esPantallaPrincipal) {
+                            alSeleccionarPestana(2) // Pestaña de eventos (Lista)
+                        } else {
+                            alHacerClicEnAtras()
                         }
-                )
-                Icon(
-                    Icons.Default.Home,
-                    null,
-                    tint = GoldColor,
-                    modifier = Modifier
-                        .size(42.dp)
-                        .padding(bottom = 12.dp)
-                        .clickable { alHacerClicEnInicio() }
-                )
-                Icon(
-                    imageVector = if (pantallaActual == "events") {
-                        if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
-                    } else {
-                        Icons.Default.PhotoLibrary
-                    },
-                    contentDescription = if (pantallaActual == "events") "Alternar vista" else "Publicaciones",
-                    tint = if (pantallaActual == "publications") GoldColor else GoldColor.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clickable {
-                            if (pantallaActual == "events") {
+                    }
+            )
+
+            // Botón Central: Inicio
+            Icon(
+                Icons.Default.Home,
+                contentDescription = "Inicio",
+                tint = GoldColor,
+                modifier = Modifier
+                    .size(42.dp)
+                    .padding(bottom = 12.dp)
+                    .clickable { alHacerClicEnInicio() }
+            )
+
+            // Botón Derecho: Alternar vista en eventos / circuitos y puntos de interés, o Publicaciones / Agregar Publicación
+            Icon(
+                imageVector = when (pantallaActual) {
+                    "publications" -> Icons.Default.AddPhotoAlternate
+                    "events" -> if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
+                    "circuits_and_poi" -> if (pestanaSeleccionada == 0) Icons.Default.LocationOn else Icons.Default.Map
+                    else -> Icons.Default.PhotoLibrary
+                },
+                contentDescription = when (pantallaActual) {
+                    "publications" -> "Nueva Publicación"
+                    "events" -> "Alternar vista"
+                    "circuits_and_poi" -> if (pestanaSeleccionada == 0) "Puntos de Interés" else "Circuitos"
+                    else -> "Publicaciones"
+                },
+                tint = if (pantallaActual == "publications" || pantallaActual == "circuits_and_poi") GoldColor else GoldColor.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable {
+                        when (pantallaActual) {
+                            "publications" -> {
+                                alHacerClicEnSubirPublicacion()
+                            }
+                            "events" -> {
                                 // Alternar entre Lista (2) y Calendario (3)
                                 alSeleccionarPestana(if (pestanaSeleccionada == 2) 3 else 2)
-                            } else {
+                            }
+                            "circuits_and_poi" -> {
+                                // Alternar entre Circuitos (0) y Puntos de Interés (1)
+                                alSeleccionarPestana(if (pestanaSeleccionada == 0) 1 else 0)
+                            }
+                            else -> {
                                 alHacerClicEnExplorar()
                             }
                         }
-                )
-            }
+                    }
+            )
         }
     }
 }

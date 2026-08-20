@@ -33,70 +33,57 @@ import com.example.codise.utils.aUrlCompleta
 @Composable
 fun PantallaPublicaciones(
     viewModel: ViewModelPublicaciones,
-    alHacerClicEnSubir: () -> Unit
+    alHacerClicEnSubir: () -> Unit = {}
 ) {
     val estadoUi by viewModel.estadoUi
     var imagenesVistaPrevia by remember { mutableStateOf<List<String>?>(null) }
     var paginaInicialVistaPrevia by remember { mutableIntStateOf(0) }
     val estaRefrescando = estadoUi is EstadoUiPublicaciones.Cargando
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = alHacerClicEnSubir,
-                containerColor = GoldColor,
-                contentColor = AzulPetroleo
-            ) {
-                Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Nueva Publicación")
-            }
-        },
-        containerColor = Color.Transparent
-    ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = estaRefrescando,
-            onRefresh = { viewModel.obtenerPublicaciones() },
-            modifier = Modifier.padding(padding).fillMaxSize()
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (estadoUi) {
-                    is EstadoUiPublicaciones.Cargando -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = GoldColor)
-                    }
-                    is EstadoUiPublicaciones.Error -> {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = (estadoUi as EstadoUiPublicaciones.Error).mensaje, color = Color.Red)
-                            Button(onClick = { viewModel.obtenerPublicaciones() }, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
-                                Text("Reintentar")
-                            }
-                        }
-                    }
-                    is EstadoUiPublicaciones.Exito -> {
-                        val publicaciones = (estadoUi as EstadoUiPublicaciones.Exito).publicaciones
-                        if (publicaciones.isEmpty()) {
-                            EstadoPublicacionesVacio()
-                        } else {
-                            LazyColumn(
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                items(publicaciones) { publicacion ->
-                                    TarjetaPublicacion(
-                                        publicacion = publicacion,
-                                        alHacerClicEnLike = { viewModel.alternarLike(publicacion.id) },
-                                        alHacerClicEnImagen = { imagenes, pagina ->
-                                            imagenesVistaPrevia = imagenes
-                                            paginaInicialVistaPrevia = pagina
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    else -> {}
+    PullToRefreshBox(
+        isRefreshing = estaRefrescando,
+        onRefresh = { viewModel.obtenerPublicaciones() },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            when (estadoUi) {
+                is EstadoUiPublicaciones.Cargando -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = GoldColor)
                 }
+                is EstadoUiPublicaciones.Error -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = (estadoUi as EstadoUiPublicaciones.Error).mensaje, color = Color.Red)
+                        Button(onClick = { viewModel.obtenerPublicaciones() }, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
+                            Text("Reintentar")
+                        }
+                    }
+                }
+                is EstadoUiPublicaciones.Exito -> {
+                    val publicaciones = (estadoUi as EstadoUiPublicaciones.Exito).publicaciones
+                    if (publicaciones.isEmpty()) {
+                        EstadoPublicacionesVacio()
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(publicaciones) { publicacion ->
+                                TarjetaPublicacion(
+                                    publicacion = publicacion,
+                                    alHacerClicEnLike = { viewModel.alternarLike(publicacion.id) },
+                                    alHacerClicEnImagen = { imagenes, pagina ->
+                                        imagenesVistaPrevia = imagenes
+                                        paginaInicialVistaPrevia = pagina
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                else -> {}
             }
         }
     }
