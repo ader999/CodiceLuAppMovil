@@ -20,6 +20,8 @@ data class Publicacion(
     val imagenes: List<ImagenPublicacion> = emptyList(),
     @SerializedName("total_likes") val totalLikes: Int,
     @SerializedName("user_ha_dado_like") val usuarioHaDadoLike: Boolean,
+    @SerializedName("total_comentarios") val totalComentarios: Int = 0,
+    val comentarios: List<ComentarioPublicacion> = emptyList(),
     @SerializedName("esta_activa") val estaActiva: Boolean,
     @SerializedName("fecha_creacion") val fechaCreacion: String
 )
@@ -28,4 +30,19 @@ data class ImagenPublicacion(
     val id: Int,
     val imagen: String,
     @SerializedName("fecha_creacion") val fechaCreacion: String
+)
+
+data class ComentarioPublicacion(
+    val id: Int,
+    val publicacion: Int? = null,
+    val autor: Int,
+    @SerializedName("autor_username") val autorNombreUsuario: String,
+    @SerializedName("autor_foto_perfil") val autorFotoPerfil: String?,
+    val contenido: String,
+    @SerializedName("esta_activo") val estaActivo: Boolean = true,
+    @SerializedName("fecha_creacion") val fechaCreacion: String
+)
+
+data class SolicitudComentario(
+    val contenido: String
 )

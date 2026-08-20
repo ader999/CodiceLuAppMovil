@@ -101,6 +101,84 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
         }
     }
 
+    fun estaUsuarioAutenticado(): Boolean {
+        return administradorSesion.obtenerSesion() != null
+    }
+
+    fun cargarComentarios(idPublicacion: Int) {
+        viewModelScope.launch {
+            try {
+                val respuesta = servicioApi.obtenerComentarios(idPublicacion)
+                if (respuesta.isSuccessful && respuesta.body() != null) {
+                    val comentarios = respuesta.body()!!
+                    val estadoActual = _estadoUi.value
+                    if (estadoActual is EstadoUiPublicaciones.Exito) {
+                        val listaActualizada = estadoActual.publicaciones.map { pub ->
+                            if (pub.id == idPublicacion) {
+                                pub.copy(
+                                    totalComentarios = comentarios.size,
+                                    comentarios = comentarios
+                                )
+                            } else pub
+                        }
+                        _estadoUi.value = EstadoUiPublicaciones.Exito(listaActualizada)
+                    }
+                }
+            } catch (e: Exception) {
+                // Manejo silencioso de error
+            }
+        }
+    }
+
+    fun agregarComentario(
+        idPublicacion: Int,
+        contenido: String,
+        alTerminar: (exito: Boolean, mensaje: String?) -> Unit
+    ) {
+        val sesion = administradorSesion.obtenerSesion()
+        if (sesion == null) {
+            alTerminar(false, "Debes iniciar sesión para comentar.")
+            return
+        }
+        val token = "Bearer ${sesion.tokens.access}"
+
+        if (contenido.isBlank()) {
+            alTerminar(false, "El comentario no puede estar vacío.")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val respuesta = servicioApi.agregarComentario(
+                    token = token,
+                    idPublicacion = idPublicacion,
+                    solicitud = SolicitudComentario(contenido = contenido.trim())
+                )
+                if (respuesta.isSuccessful && respuesta.body() != null) {
+                    val nuevoComentario = respuesta.body()!!
+                    val estadoActual = _estadoUi.value
+                    if (estadoActual is EstadoUiPublicaciones.Exito) {
+                        val listaActualizada = estadoActual.publicaciones.map { pub ->
+                            if (pub.id == idPublicacion) {
+                                val comentariosActualizados = pub.comentarios + nuevoComentario
+                                pub.copy(
+                                    totalComentarios = pub.totalComentarios + 1,
+                                    comentarios = comentariosActualizados
+                                )
+                            } else pub
+                        }
+                        _estadoUi.value = EstadoUiPublicaciones.Exito(listaActualizada)
+                    }
+                    alTerminar(true, null)
+                } else {
+                    alTerminar(false, "Error al enviar comentario (${respuesta.code()})")
+                }
+            } catch (e: Exception) {
+                alTerminar(false, "Error de red: ${e.localizedMessage}")
+            }
+        }
+    }
+
     fun subirPublicacion(
         descripcion: String,
         idCiudad: Int?,

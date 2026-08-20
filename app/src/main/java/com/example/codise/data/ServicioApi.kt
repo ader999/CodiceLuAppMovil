@@ -93,6 +93,18 @@ interface ServicioApi {
         @Path("id") idPublicacion: Int
     ): Response<RespuestaLike>
 
+    @GET("api/publicaciones/{id}/comentarios/")
+    suspend fun obtenerComentarios(
+        @Path("id") idPublicacion: Int
+    ): Response<List<ComentarioPublicacion>>
+
+    @POST("api/publicaciones/{id}/comentarios/")
+    suspend fun agregarComentario(
+        @Header("Authorization") token: String,
+        @Path("id") idPublicacion: Int,
+        @Body solicitud: SolicitudComentario
+    ): Response<ComentarioPublicacion>
+
     companion object {
         const val URL_BASE = "https://codisecore-production.up.railway.app/"
         private var instancia: ServicioApi? = null
