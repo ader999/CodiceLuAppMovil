@@ -8,9 +8,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,9 +38,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.codise.data.City
-import com.example.codise.data.Event
-import com.example.codise.data.User
+import com.example.codise.data.Ciudad
+import com.example.codise.data.Evento
+import com.example.codise.data.Usuario
 import com.example.codise.ui.theme.*
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -48,100 +51,100 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Codise路Theme {
-                MainApp()
+            Codice路Theme {
+                AplicacionPrincipal()
             }
         }
     }
 }
 
 @Composable
-fun MainApp() {
-    val loginViewModel: LoginViewModel = viewModel()
-    val uiState by loginViewModel.uiState.collectAsState()
+fun AplicacionPrincipal() {
+    val viewModelLogin: ViewModelLogin = viewModel()
+    val estadoUi by viewModelLogin.estadoUi.collectAsState()
 
-    if (uiState is LoginUiState.Success) {
-        val response = (uiState as LoginUiState.Success).response
-        AuthenticatedApp(
-            user = response.user,
-            token = response.tokens.access,
-            onLogout = { loginViewModel.logout() }
+    if (estadoUi is EstadoUiLogin.Exito) {
+        val respuesta = (estadoUi as EstadoUiLogin.Exito).respuesta
+        AplicacionAutenticada(
+            usuario = respuesta.usuario,
+            token = respuesta.tokens.access,
+            alCerrarSesion = { viewModelLogin.cerrarSesion() }
         )
     } else {
-        LoginScreen(loginViewModel)
+        PantallaLogin(viewModelLogin)
     }
 }
 
 @Composable
-fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
-    val profileViewModel: ProfileViewModel = viewModel()
-    val profileUiState by profileViewModel.uiState.collectAsState()
-    val mainViewModel: MainViewModel = viewModel()
-    val eventsViewModel: EventsViewModel = viewModel()
-    val publicationsViewModel: PublicationsViewModel = viewModel()
-    val visitedPoiIds by mainViewModel.visitedPoiIds.collectAsState()
-    val context = LocalContext.current
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () -> Unit) {
+    val viewModelPerfil: ViewModelPerfil = viewModel()
+    val estadoUiPerfil by viewModelPerfil.estadoUi.collectAsState()
+    val viewModelPrincipal: ViewModelPrincipal = viewModel()
+    val viewModelEventos: ViewModelEventos = viewModel()
+    val viewModelPublicaciones: ViewModelPublicaciones = viewModel()
+    val idsPuntosVisitados by viewModelPrincipal.idsPuntosVisitados.collectAsState()
+    val contexto = LocalContext.current
+    val clienteUbicacion = remember { LocationServices.getFusedLocationProviderClient(contexto) }
 
-    var currentScreen by remember { mutableStateOf("main") }
-    var selectedEvent by remember { mutableStateOf<Event?>(null) }
-    val selectedCity = mainViewModel.selectedCity
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var pantallaActual by remember { mutableStateOf("main") }
+    var eventoSeleccionado by remember { mutableStateOf<Evento?>(null) }
+    val ciudadSeleccionada = viewModelPrincipal.ciudadSeleccionada
+    var pestanaSeleccionada by remember { mutableIntStateOf(0) }
 
-    var poiIdToMarkAsVisited by remember { mutableStateOf<Int?>(null) }
+    var idPuntoParaMarcarComoVisitado by remember { mutableStateOf<Int?>(null) }
 
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
+    val lanzadorPermisosUbicacion = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    ) { permisos ->
+        if (permisos[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permisos[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         ) {
-            poiIdToMarkAsVisited?.let { poiId ->
+            idPuntoParaMarcarComoVisitado?.let { puntoId ->
                 try {
-                    fusedLocationClient.getCurrentLocation(
+                    clienteUbicacion.getCurrentLocation(
                         Priority.PRIORITY_HIGH_ACCURACY,
                         CancellationTokenSource().token
-                    ).addOnSuccessListener { location ->
-                        mainViewModel.toggleVisited(poiId, location?.latitude, location?.longitude)
+                    ).addOnSuccessListener { ubicacion ->
+                        viewModelPrincipal.alternarVisitado(puntoId, ubicacion?.latitude, ubicacion?.longitude)
                     }.addOnFailureListener {
-                        mainViewModel.toggleVisited(poiId)
+                        viewModelPrincipal.alternarVisitado(puntoId)
                     }
                 } catch (e: SecurityException) {
-                    mainViewModel.toggleVisited(poiId)
+                    viewModelPrincipal.alternarVisitado(puntoId)
                 }
             }
         } else {
-            // Permission denied, mark as visited locally without cloud sync (or at least without GPS)
-            poiIdToMarkAsVisited?.let { mainViewModel.toggleVisited(it) }
+            // Permiso denegado, marcar como visitado localmente sin GPS
+            idPuntoParaMarcarComoVisitado?.let { viewModelPrincipal.alternarVisitado(it) }
         }
-        poiIdToMarkAsVisited = null
+        idPuntoParaMarcarComoVisitado = null
     }
 
-    val requestLocationAndMark = { poiId: Int ->
-        if (visitedPoiIds.contains(poiId)) {
-            // Already visited, just unmark locally
-            mainViewModel.toggleVisited(poiId)
+    val solicitarUbicacionYMarcar = { puntoId: Int ->
+        if (idsPuntosVisitados.contains(puntoId)) {
+            // Ya visitado, desmarcar localmente
+            viewModelPrincipal.alternarVisitado(puntoId)
         } else {
             if (ContextCompat.checkSelfPermission(
-                    context,
+                    contexto,
                     Manifest.permission.ACCESS_FINE_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED
             ) {
                 try {
-                    fusedLocationClient.getCurrentLocation(
+                    clienteUbicacion.getCurrentLocation(
                         Priority.PRIORITY_HIGH_ACCURACY,
                         CancellationTokenSource().token
-                    ).addOnSuccessListener { location ->
-                        mainViewModel.toggleVisited(poiId, location?.latitude, location?.longitude)
+                    ).addOnSuccessListener { ubicacion ->
+                        viewModelPrincipal.alternarVisitado(puntoId, ubicacion?.latitude, ubicacion?.longitude)
                     }.addOnFailureListener {
-                        mainViewModel.toggleVisited(poiId)
+                        viewModelPrincipal.alternarVisitado(puntoId)
                     }
                 } catch (e: SecurityException) {
-                    mainViewModel.toggleVisited(poiId)
+                    viewModelPrincipal.alternarVisitado(puntoId)
                 }
             } else {
-                poiIdToMarkAsVisited = poiId
-                locationPermissionLauncher.launch(
+                idPuntoParaMarcarComoVisitado = puntoId
+                lanzadorPermisosUbicacion.launch(
                     arrayOf(
                         Manifest.permission.ACCESS_FINE_LOCATION,
                         Manifest.permission.ACCESS_COARSE_LOCATION
@@ -151,55 +154,55 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
         }
     }
 
-    // Auto-refresh when returning to foreground
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                mainViewModel.fetchCities()
+    // Auto-refrescar al volver al primer plano
+    val propietarioCicloVida = LocalLifecycleOwner.current
+    DisposableEffect(propietarioCicloVida) {
+        val observador = LifecycleEventObserver { _, evento ->
+            if (evento == Lifecycle.Event.ON_RESUME) {
+                viewModelPrincipal.obtenerCiudades()
             }
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
+        propietarioCicloVida.lifecycle.addObserver(observador)
         onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
+            propietarioCicloVida.lifecycle.removeObserver(observador)
         }
     }
 
     Scaffold(
         topBar = {
-            val topBarTitle = when (currentScreen) {
+            val tituloBarraSuperior = when (pantallaActual) {
                 "upload_publication" -> "Nueva Publicación"
                 "upload_event" -> "Subir Nuevo Evento"
                 else -> null
             }
-            TopBar(
-                title = topBarTitle,
-                onProfileClick = { currentScreen = "profile" },
-                onLogoClick = { currentScreen = "main" }
+            BarraSuperior(
+                titulo = tituloBarraSuperior,
+                alHacerClicEnPerfil = { pantallaActual = "profile" },
+                alHacerClicEnLogo = { pantallaActual = "main" }
             )
         },
         bottomBar = {
-            BottomNavBar(
-                currentScreen = currentScreen,
-                selectedTab = selectedTab,
-                onHomeClick = { currentScreen = "main" },
-                onTabSelected = { 
-                    selectedTab = it
+            BarraNavegacionInferior(
+                pantallaActual = pantallaActual,
+                pestanaSeleccionada = pestanaSeleccionada,
+                alHacerClicEnInicio = { pantallaActual = "main" },
+                alSeleccionarPestana = { 
+                    pestanaSeleccionada = it
                     if (it == 2 || it == 3) {
-                        currentScreen = "events"
+                        pantallaActual = "events"
                     }
                 },
-                onExploreClick = { currentScreen = "publications" },
-                onBackClick = {
-                    when (currentScreen) {
-                        "circuit_detail" -> currentScreen = "circuits_and_poi"
+                alHacerClicEnExplorar = { pantallaActual = "publications" },
+                alHacerClicEnAtras = {
+                    when (pantallaActual) {
+                        "circuit_detail" -> pantallaActual = "circuits_and_poi"
                         "upload_publication" -> {
-                            currentScreen = "publications"
-                            publicationsViewModel.resetUploadState()
+                            pantallaActual = "publications"
+                            viewModelPublicaciones.reiniciarEstadoSubida()
                         }
                         "upload_event" -> {
-                            currentScreen = "events"
-                            eventsViewModel.resetUploadState()
+                            pantallaActual = "events"
+                            viewModelEventos.reiniciarEstadoSubida()
                         }
                     }
                 }
@@ -208,139 +211,135 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
         containerColor = Celeste
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
-            when (currentScreen) {
-                "main" -> MainScreen(
-                    mainViewModel = mainViewModel,
-                    onCityInfoClick = { city ->
-                        mainViewModel.selectCity(city.id)
-                        currentScreen = "city_detail"
+            when (pantallaActual) {
+                "main" -> PantallaPrincipal(
+                    viewModelPrincipal = viewModelPrincipal,
+                    alHacerClicEnPinCiudad = { ciudad ->
+                        viewModelPrincipal.seleccionarCiudad(ciudad.id)
+                        pestanaSeleccionada = 0
+                        pantallaActual = "circuits_and_poi"
                     },
-                    onCityPinClick = { city ->
-                        mainViewModel.selectCity(city.id)
-                        selectedTab = 0
-                        currentScreen = "circuits_and_poi"
-                    },
-                    onCityClick = { city ->
-                        mainViewModel.selectCity(city.id)
-                        currentScreen = "city_detail"
+                    alHacerClicEnCiudad = { ciudad ->
+                        viewModelPrincipal.seleccionarCiudad(ciudad.id)
+                        pantallaActual = "city_detail"
                     }
                 )
                 "profile" -> {
-                    val businessUiState by profileViewModel.businessUiState.collectAsState()
-                    val cities by mainViewModel.cities
-                    ProfileContent(
-                        user = user,
+                    val estadoUiEmpresa by viewModelPerfil.estadoUiEmpresa.collectAsState()
+                    val ciudades by viewModelPrincipal.ciudades
+                    ContenidoPerfil(
+                        usuario = usuario,
                         token = token,
-                        onBack = { currentScreen = "main" },
-                        onSave = { updatedUser: User ->
-                            profileViewModel.updateProfile(token, updatedUser)
+                        alVolver = { pantallaActual = "main" },
+                        alGuardar = { usuarioActualizado: Usuario ->
+                            viewModelPerfil.actualizarPerfil(token, usuarioActualizado)
                         },
-                        profileUiState = profileUiState,
-                        businessUiState = businessUiState,
-                        onRegisterBusiness = { t, b -> profileViewModel.registerBusiness(t, b) },
-                        cities = cities,
-                        onLogout = onLogout
+                        estadoUiPerfil = estadoUiPerfil,
+                        estadoUiEmpresa = estadoUiEmpresa,
+                        alRegistrarEmpresa = { t, emp -> viewModelPerfil.registrarEmpresa(t, emp) },
+                        ciudades = ciudades,
+                        alCerrarSesion = alCerrarSesion
                     )
                 }
                 "circuits_and_poi" -> {
-                    selectedCity?.let { city ->
-                        CircuitsAndPoiScreen(
-                            city = city,
-                            selectedTab = selectedTab,
-                            onVerMasClick = { circuit ->
-                                mainViewModel.selectCircuit(circuit.id)
-                                currentScreen = "circuit_detail"
+                    ciudadSeleccionada?.let { ciudad ->
+                        PantallaCircuitosYPuntos(
+                            ciudad = ciudad,
+                            pestanaSeleccionada = pestanaSeleccionada,
+                            alHacerClicEnVerMas = { circuito ->
+                                viewModelPrincipal.seleccionarCircuito(circuito.id)
+                                pantallaActual = "circuit_detail"
                             }
                         )
                     }
                 }
                 "circuit_detail" -> {
-                    val circuit = mainViewModel.selectedCircuit
-                    if (circuit != null) {
-                        val visitedPois by mainViewModel.visitedPois.collectAsState()
-                        CircuitDetailScreen(
-                            circuit = circuit,
-                            visitedPois = visitedPois,
-                            onToggleVisited = { poiId -> requestLocationAndMark(poiId) }
+                    val circuito = viewModelPrincipal.circuitoSeleccionado
+                    if (circuito != null) {
+                        val puntosVisitados by viewModelPrincipal.puntosVisitados.collectAsState()
+                        PantallaDetalleCircuito(
+                            circuito = circuito,
+                            puntosVisitados = puntosVisitados,
+                            alAlternarVisitado = { puntoId -> solicitarUbicacionYMarcar(puntoId) }
                         )
                     } else {
-                        currentScreen = "circuits_and_poi"
+                        pantallaActual = "circuits_and_poi"
                     }
                 }
                 "city_detail" -> {
-                    selectedCity?.let { city ->
-                        CityDetailScreen(
-                            city = city,
-                            onBack = { currentScreen = "main" }
+                    ciudadSeleccionada?.let { ciudad ->
+                        PantallaDetalleCiudad(
+                            ciudad = ciudad,
+                            alRegresar = { pantallaActual = "main" }
                         )
                     }
                 }
                 "events" -> {
-                    EventsScreen(
-                        viewModel = eventsViewModel,
-                        canUpload = user.esProtagonista,
-                        onUploadClick = { currentScreen = "upload_event" },
-                        onEventClick = { event ->
-                            selectedEvent = event
-                            currentScreen = "event_detail"
+                    PantallaEventos(
+                        viewModel = viewModelEventos,
+                        puedeSubir = usuario.esProtagonista,
+                        alHacerClicEnSubir = { pantallaActual = "upload_event" },
+                        alHacerClicEnEvento = { evento ->
+                            eventoSeleccionado = evento
+                            pantallaActual = "event_detail"
                         },
-                        viewMode = selectedTab
+                        modoVista = pestanaSeleccionada
                     )
                 }
                 "event_detail" -> {
-                    selectedEvent?.let { event ->
-                        EventDetailScreen(
-                            event = event,
-                            eventsViewModel = eventsViewModel
+                    eventoSeleccionado?.let { evento ->
+                        PantallaDetalleEvento(
+                            evento = evento,
+                            viewModelEventos = viewModelEventos
                         )
                     }
                 }
                 "publications" -> {
-                    val selectedCityId = mainViewModel.selectedCity?.id
-                    LaunchedEffect(selectedCityId) {
-                        publicationsViewModel.fetchPublications(cityId = selectedCityId)
+                    val idCiudadSeleccionada = viewModelPrincipal.ciudadSeleccionada?.id
+                    LaunchedEffect(idCiudadSeleccionada) {
+                        viewModelPublicaciones.obtenerPublicaciones(idCiudad = idCiudadSeleccionada)
                     }
-                    PublicationsScreen(
-                        viewModel = publicationsViewModel,
-                        onUploadClick = { currentScreen = "upload_publication" }
+                    PantallaPublicaciones(
+                        viewModel = viewModelPublicaciones,
+                        alHacerClicEnSubir = { pantallaActual = "upload_publication" }
                     )
                 }
                 "upload_publication" -> {
-                    val cities by mainViewModel.cities
-                    val eventsState by eventsViewModel.uiState
-                    val events = (eventsState as? EventsUiState.Success)?.events ?: emptyList()
-                    val isUploading by publicationsViewModel.isUploading
-                    val uploadSuccess by publicationsViewModel.uploadSuccess
-                    val errorMessage by publicationsViewModel.errorMessage
+                    val ciudades by viewModelPrincipal.ciudades
+                    val estadoEventos by viewModelEventos.estadoUi
+                    val eventos = (estadoEventos as? EstadoUiEventos.Exito)?.eventos ?: emptyList()
+                    val estaSubiendo by viewModelPublicaciones.estaSubiendo
+                    val subidaExitosa by viewModelPublicaciones.subidaExitosa
+                    val mensajeError by viewModelPublicaciones.mensajeError
 
-                    UploadPublicationScreen(
-                        cities = cities,
-                        events = events,
-                        onBack = {
-                            currentScreen = "publications"
-                            publicationsViewModel.resetUploadState()
+                    PantallaSubirPublicacion(
+                        ciudades = ciudades,
+                        eventos = eventos,
+                        alVolver = {
+                            pantallaActual = "publications"
+                            viewModelPublicaciones.reiniciarEstadoSubida()
                         },
-                        onUpload = { desc, city, business, event, uris ->
-                            publicationsViewModel.uploadPublication(desc, city, business, event, uris)
+                        alSubir = { descripcion, idCiudad, idEmpresa, idEvento, uris ->
+                            viewModelPublicaciones.subirPublicacion(descripcion, idCiudad, idEmpresa, idEvento, uris)
                         },
-                        isUploading = isUploading,
-                        uploadSuccess = uploadSuccess,
-                        errorMessage = errorMessage
+                        estaSubiendo = estaSubiendo,
+                        subidaExitosa = subidaExitosa,
+                        mensajeError = mensajeError
                     )
                 }
                 "upload_event" -> {
-                    val cities by mainViewModel.cities
-                    val isUploading by eventsViewModel.isUploading
-                    val uploadSuccess by eventsViewModel.uploadSuccess
-                    UploadEventScreen(
-                        cities = cities,
-                        onBack = { 
-                            currentScreen = "events"
-                            eventsViewModel.resetUploadState()
+                    val ciudades by viewModelPrincipal.ciudades
+                    val estaSubiendo by viewModelEventos.estaSubiendo
+                    val subidaExitosa by viewModelEventos.subidaExitosa
+                    PantallaSubirEvento(
+                        ciudades = ciudades,
+                        alVolver = { 
+                            pantallaActual = "events"
+                            viewModelEventos.reiniciarEstadoSubida()
                         },
-                        onUpload = { eventsViewModel.uploadEvent(it) },
-                        isUploading = isUploading,
-                        uploadSuccess = uploadSuccess
+                        alSubir = { viewModelEventos.subirEvento(it) },
+                        estaSubiendo = estaSubiendo,
+                        subidaExitosa = subidaExitosa
                     )
                 }
             }
@@ -350,19 +349,18 @@ fun AuthenticatedApp(user: User, token: String, onLogout: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(
-    mainViewModel: MainViewModel,
-    onCityInfoClick: (City) -> Unit,
-    onCityPinClick: (City) -> Unit,
-    onCityClick: (City) -> Unit
+fun PantallaPrincipal(
+    viewModelPrincipal: ViewModelPrincipal,
+    alHacerClicEnPinCiudad: (Ciudad) -> Unit,
+    alHacerClicEnCiudad: (Ciudad) -> Unit
 ) {
-    val cities by mainViewModel.cities
-    val isLoading by mainViewModel.isLoading
-    val error by mainViewModel.error
+    val ciudades by viewModelPrincipal.ciudades
+    val estaCargando by viewModelPrincipal.estaCargando
+    val error by viewModelPrincipal.error
 
     PullToRefreshBox(
-        isRefreshing = isLoading,
-        onRefresh = { mainViewModel.fetchCities(force = true) },
+        isRefreshing = estaCargando,
+        onRefresh = { viewModelPrincipal.obtenerCiudades(forzar = true) },
         modifier = Modifier.fillMaxSize()
     ) {
         Column(
@@ -371,21 +369,20 @@ fun MainScreen(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            MainCard(
-                cities = cities,
-                isLoading = isLoading,
+            TarjetaPrincipal(
+                ciudades = ciudades,
+                estaCargando = estaCargando,
                 error = error,
-                onRefresh = { mainViewModel.fetchCities(force = true) },
-                onInfoClick = onCityInfoClick,
-                onPinClick = onCityPinClick,
-                onCityClick = onCityClick
+                alRefrescar = { viewModelPrincipal.obtenerCiudades(forzar = true) },
+                alHacerClicEnPin = alHacerClicEnPinCiudad,
+                alHacerClicEnCiudad = alHacerClicEnCiudad
             )
         }
     }
 }
 
 @Composable
-fun TopBar(title: String? = null, onProfileClick: () -> Unit, onLogoClick: () -> Unit) {
+fun BarraSuperior(titulo: String? = null, alHacerClicEnPerfil: () -> Unit, alHacerClicEnLogo: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -397,51 +394,53 @@ fun TopBar(title: String? = null, onProfileClick: () -> Unit, onLogoClick: () ->
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.clickable { onLogoClick() }.weight(1f)
+            modifier = Modifier.clickable { alHacerClicEnLogo() }.weight(1f)
         ) {
-            // Stylized Logo Triangle
-            Box(
-                modifier = Modifier
-                    .size(35.dp)
-                    .clip(GenericShape { size, _ ->
-                        moveTo(size.width * 0.2f, size.height)
-                        lineTo(size.width, size.height * 0.1f)
-                        lineTo(0f, size.height * 0.5f)
-                        close()
-                    })
-                    .background(GoldColor)
-            )
-            Text(
-                text = title ?: "Codice路",
-                color = GoldColor,
-                fontSize = if (title != null) 20.sp else 26.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 10.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (titulo != null) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_logo),
+                    contentDescription = "Codice Logo",
+                    modifier = Modifier.height(32.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Text(
+                    text = titulo,
+                    color = GoldColor,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 10.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_logo),
+                    contentDescription = "Codice Logo",
+                    modifier = Modifier.height(36.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
         }
         
         Icon(
             imageVector = Icons.Default.Person,
-            contentDescription = "Profile",
+            contentDescription = "Perfil",
             tint = GoldColor,
             modifier = Modifier
                 .size(36.dp)
-                .clickable { onProfileClick() }
+                .clickable { alHacerClicEnPerfil() }
         )
     }
 }
 
 @Composable
-fun MainCard(
-    cities: List<City>,
-    isLoading: Boolean,
+fun TarjetaPrincipal(
+    ciudades: List<Ciudad>,
+    estaCargando: Boolean,
     error: String?,
-    onRefresh: () -> Unit,
-    onInfoClick: (City) -> Unit,
-    onPinClick: (City) -> Unit,
-    onCityClick: (City) -> Unit
+    alRefrescar: () -> Unit,
+    alHacerClicEnPin: (Ciudad) -> Unit,
+    alHacerClicEnCiudad: (Ciudad) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -456,7 +455,7 @@ fun MainCard(
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
-            // Map Placeholder Area
+            // Área de mapa
             Box(
                 modifier = Modifier
                     .weight(0.35f)
@@ -480,7 +479,7 @@ fun MainCard(
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = GrisClaro)
             
             Box(modifier = Modifier.weight(0.65f)) {
-                if (isLoading) {
+                if (estaCargando) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = GoldColor)
                 } else if (error != null) {
                     Column(
@@ -489,18 +488,17 @@ fun MainCard(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(text = error, color = MaterialTheme.colorScheme.error)
-                        Button(onClick = onRefresh, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
+                        Button(onClick = alRefrescar, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
                             Text("Reintentar")
                         }
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(cities) { city ->
-                            LocationItem(
-                                name = city.nombre,
-                                onInfoClick = { onInfoClick(city) },
-                                onPinClick = { onPinClick(city) },
-                                onCityClick = { onCityClick(city) }
+                        items(ciudades) { ciudad ->
+                            ElementoUbicacion(
+                                nombre = ciudad.nombre,
+                                alHacerClicEnPin = { alHacerClicEnPin(ciudad) },
+                                alHacerClicEnCiudad = { alHacerClicEnCiudad(ciudad) }
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = GrisClaro)
                         }
@@ -512,7 +510,7 @@ fun MainCard(
 }
 
 @Composable
-fun LocationItem(name: String, onInfoClick: () -> Unit, onPinClick: () -> Unit, onCityClick: () -> Unit) {
+fun ElementoUbicacion(nombre: String, alHacerClicEnPin: () -> Unit, alHacerClicEnCiudad: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -524,7 +522,7 @@ fun LocationItem(name: String, onInfoClick: () -> Unit, onPinClick: () -> Unit, 
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .weight(1f)
-                .clickable { onCityClick() }
+                .clickable { alHacerClicEnCiudad() }
         ) {
             Icon(
                 imageVector = Icons.Default.Star,
@@ -534,7 +532,7 @@ fun LocationItem(name: String, onInfoClick: () -> Unit, onPinClick: () -> Unit, 
             )
             Spacer(modifier = Modifier.width(14.dp))
             Text(
-                text = name,
+                text = nombre,
                 fontSize = 22.sp,
                 color = NegroPuro,
                 fontWeight = FontWeight.Medium,
@@ -544,15 +542,7 @@ fun LocationItem(name: String, onInfoClick: () -> Unit, onPinClick: () -> Unit, 
         }
         
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onInfoClick) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Información y Datos Históricos",
-                    tint = AzulPetroleo,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            IconButton(onClick = onPinClick) {
+            IconButton(onClick = alHacerClicEnPin) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = "Circuitos y Puntos de Interés",
@@ -565,26 +555,23 @@ fun LocationItem(name: String, onInfoClick: () -> Unit, onPinClick: () -> Unit, 
 }
 
 @Composable
-fun BottomNavBar(
-    currentScreen: String,
-    selectedTab: Int,
-    onHomeClick: () -> Unit,
-    onTabSelected: (Int) -> Unit,
-    onExploreClick: () -> Unit = {},
-    onBackClick: () -> Unit = {}
+fun BarraNavegacionInferior(
+    pantallaActual: String,
+    pestanaSeleccionada: Int,
+    alHacerClicEnInicio: () -> Unit,
+    alSeleccionarPestana: (Int) -> Unit,
+    alHacerClicEnExplorar: () -> Unit = {},
+    alHacerClicEnAtras: () -> Unit = {}
 ) {
-    val threeMoundsShape = GenericShape { size, _ ->
+    val formaTresMonticulos = GenericShape { size, _ ->
         val w = size.width
         val h = size.height
-        val waveBaseY = 30f // Starting Y for the wave
-        val wavePeakY = -20f // Highest point of the wave
+        val waveBaseY = 30f
+        val wavePeakY = -20f
         
         moveTo(0f, waveBaseY)
-        // Left mound
         quadraticTo(w * 0.16f, waveBaseY - 20f, w * 0.33f, waveBaseY)
-        // Middle mound (higher)
         quadraticTo(w * 0.5f, wavePeakY, w * 0.67f, waveBaseY)
-        // Right mound
         quadraticTo(w * 0.84f, waveBaseY - 20f, w, waveBaseY)
         
         lineTo(w, h)
@@ -596,7 +583,7 @@ fun BottomNavBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(110.dp)
-            .clip(threeMoundsShape)
+            .clip(formaTresMonticulos)
             .background(AzulPetroleo)
             .padding(bottom = 26.dp),
         contentAlignment = Alignment.BottomCenter
@@ -608,23 +595,23 @@ fun BottomNavBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (currentScreen == "circuits_and_poi") {
-                // Circuitos Tab
+            if (pantallaActual == "circuits_and_poi") {
+                // Pestaña Circuitos
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .clickable { onTabSelected(0) }
+                        .clickable { alSeleccionarPestana(0) }
                         .padding(horizontal = 8.dp)
                 ) {
                     Icon(
                         Icons.Default.Menu,
                         null,
-                        tint = if (selectedTab == 0) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        tint = if (pestanaSeleccionada == 0) GoldColor else GoldColor.copy(alpha = 0.5f),
                         modifier = Modifier.size(32.dp)
                     )
                     Text(
                         "Circuitos",
-                        color = if (selectedTab == 0) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        color = if (pestanaSeleccionada == 0) GoldColor else GoldColor.copy(alpha = 0.5f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -637,47 +624,47 @@ fun BottomNavBar(
                     modifier = Modifier
                         .size(42.dp)
                         .padding(bottom = 12.dp)
-                        .clickable { onHomeClick() }
+                        .clickable { alHacerClicEnInicio() }
                 )
 
-                // Puntos Tab
+                // Pestaña Puntos
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .clickable { onTabSelected(1) }
+                        .clickable { alSeleccionarPestana(1) }
                         .padding(horizontal = 8.dp)
                 ) {
                     Icon(
                         Icons.Default.Explore,
                         null,
-                        tint = if (selectedTab == 1) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        tint = if (pestanaSeleccionada == 1) GoldColor else GoldColor.copy(alpha = 0.5f),
                         modifier = Modifier.size(32.dp)
                     )
                     Text(
                         "Puntos",
-                        color = if (selectedTab == 1) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        color = if (pestanaSeleccionada == 1) GoldColor else GoldColor.copy(alpha = 0.5f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             } else {
-                // Default Navigation
-                val isBackScreen = currentScreen in listOf("circuit_detail", "upload_publication", "upload_event")
+                // Navegación por defecto
+                val esPantallaConAtras = pantallaActual in listOf("circuit_detail", "upload_publication", "upload_event")
                 Icon(
-                    imageVector = if (isBackScreen) {
+                    imageVector = if (esPantallaConAtras) {
                         Icons.AutoMirrored.Filled.ArrowBack
                     } else {
                         Icons.Default.Event
                     },
-                    contentDescription = if (isBackScreen) "Regresar" else "Eventos",
-                    tint = if (currentScreen == "events") GoldColor else GoldColor.copy(alpha = 0.5f),
+                    contentDescription = if (esPantallaConAtras) "Regresar" else "Eventos",
+                    tint = if (pantallaActual == "events") GoldColor else GoldColor.copy(alpha = 0.5f),
                     modifier = Modifier
                         .size(36.dp)
                         .clickable {
-                            if (isBackScreen) {
-                                onBackClick()
+                            if (esPantallaConAtras) {
+                                alHacerClicEnAtras()
                             } else {
-                                onTabSelected(2) // Events tab (List)
+                                alSeleccionarPestana(2) // Pestaña de eventos (Lista)
                             }
                         }
                 )
@@ -688,24 +675,24 @@ fun BottomNavBar(
                     modifier = Modifier
                         .size(42.dp)
                         .padding(bottom = 12.dp)
-                        .clickable { onHomeClick() }
+                        .clickable { alHacerClicEnInicio() }
                 )
                 Icon(
-                    imageVector = if (currentScreen == "events") {
-                        if (selectedTab == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
+                    imageVector = if (pantallaActual == "events") {
+                        if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
                     } else {
                         Icons.Default.PhotoLibrary
                     },
-                    contentDescription = if (currentScreen == "events") "Alternar vista" else "Publicaciones",
-                    tint = if (currentScreen == "publications") GoldColor else GoldColor.copy(alpha = 0.5f),
+                    contentDescription = if (pantallaActual == "events") "Alternar vista" else "Publicaciones",
+                    tint = if (pantallaActual == "publications") GoldColor else GoldColor.copy(alpha = 0.5f),
                     modifier = Modifier
                         .size(36.dp)
                         .clickable {
-                            if (currentScreen == "events") {
-                                // Toggle between List (2) and Calendar (3)
-                                onTabSelected(if (selectedTab == 2) 3 else 2)
+                            if (pantallaActual == "events") {
+                                // Alternar entre Lista (2) y Calendario (3)
+                                alSeleccionarPestana(if (pestanaSeleccionada == 2) 3 else 2)
                             } else {
-                                onExploreClick()
+                                alHacerClicEnExplorar()
                             }
                         }
                 )
@@ -716,27 +703,38 @@ fun BottomNavBar(
 
 @Preview(showBackground = true)
 @Composable
-fun MainCardPreview() {
-    Codise路Theme {
-        MainCard(
-            cities = listOf(
-                City(1, "León", "Ciudad universitaria", null, 0.0, 0.0, emptyList(), emptyList(), emptyList()),
-                City(2, "Granada", "La Gran Sultana", null, 0.0, 0.0, emptyList(), emptyList(), emptyList())
+fun VistaPreviaBarraSuperior() {
+    Codice路Theme {
+        BarraSuperior(alHacerClicEnPerfil = {}, alHacerClicEnLogo = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun VistaPreviaTarjetaPrincipal() {
+    Codice路Theme {
+        TarjetaPrincipal(
+            ciudades = listOf(
+                Ciudad(1, "León", "Ciudad universitaria", null, 0.0, 0.0, emptyList(), emptyList(), emptyList()),
+                Ciudad(2, "Granada", "La Gran Sultana", null, 0.0, 0.0, emptyList(), emptyList(), emptyList())
             ),
-            isLoading = false,
+            estaCargando = false,
             error = null,
-            onRefresh = {},
-            onInfoClick = {},
-            onPinClick = {},
-            onCityClick = {}
+            alRefrescar = {},
+            alHacerClicEnPin = {},
+            alHacerClicEnCiudad = {}
         )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun DefaultPreview() {
-    Codise路Theme {
-        MainApp()
+fun VistaPreviaPorDefecto() {
+    Codice路Theme {
+        PantallaPrincipal(
+            viewModelPrincipal = viewModel(),
+            alHacerClicEnPinCiudad = {},
+            alHacerClicEnCiudad = {}
+        )
     }
 }

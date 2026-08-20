@@ -17,13 +17,13 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Codise路"
+        android:theme="@style/Theme.Codice路"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Codise路"
+            android:theme="@style/Theme.Codice路"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -43,7 +43,7 @@
         </provider>
 
         <receiver
-            android:name=".receivers.EventNotificationReceiver"
+            android:name=".receivers.ReceptorNotificacionesEvento"
             android:enabled="true"
             android:exported="false" />
     </application>

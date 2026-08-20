@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Codise路"
+rootProject.name = "Codice路"
 include(":app")
