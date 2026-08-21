@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -168,6 +169,42 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
         }
     }
 
+    var mostrarDialogoAsistente by remember { mutableStateOf(false) }
+
+    if (mostrarDialogoAsistente) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoAsistente = false },
+            icon = {
+                Image(
+                    painter = painterResource(id = R.drawable.iconasistente),
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    contentScale = ContentScale.Fit
+                )
+            },
+            title = {
+                Text(
+                    text = "Asistente Guardabarranco",
+                    fontWeight = FontWeight.Bold,
+                    color = AzulPetroleo
+                )
+            },
+            text = {
+                Text(
+                    text = "¡Hola! Soy tu asistente Guardabarranco. Pronto podré ayudarte con recomendaciones turísticas personalizadas, rutas y eventos en Nicaragua.",
+                    color = AzulPetroleo.copy(alpha = 0.8f)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoAsistente = false }) {
+                    Text("Entendido", color = GoldColor, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = BlancoBase,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Scaffold(
         topBar = {
             val tituloBarraSuperior = when (pantallaActual) {
@@ -177,7 +214,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
             BarraSuperior(
                 titulo = tituloBarraSuperior,
                 alHacerClicEnPerfil = { pantallaActual = "profile" },
-                alHacerClicEnLogo = { pantallaActual = "main" }
+                alHacerClicEnLogo = { pantallaActual = "main" },
+                alHacerClicEnAsistente = { mostrarDialogoAsistente = true }
             )
         },
         bottomBar = {
@@ -223,7 +261,10 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
         },
         containerColor = Celeste
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
+        val paddingSuperior = innerPadding.calculateTopPadding()
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
             when (pantallaActual) {
                 "main" -> PantallaPrincipal(
                     viewModelPrincipal = viewModelPrincipal,
@@ -235,7 +276,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                     alHacerClicEnCiudad = { ciudad ->
                         viewModelPrincipal.seleccionarCiudad(ciudad.id)
                         pantallaActual = "city_detail"
-                    }
+                    },
+                    paddingSuperior = paddingSuperior
                 )
                 "profile" -> {
                     val estadoUiEmpresa by viewModelPerfil.estadoUiEmpresa.collectAsState()
@@ -251,7 +293,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                         estadoUiEmpresa = estadoUiEmpresa,
                         alRegistrarEmpresa = { t, emp -> viewModelPerfil.registrarEmpresa(t, emp) },
                         ciudades = ciudades,
-                        alCerrarSesion = alCerrarSesion
+                        alCerrarSesion = alCerrarSesion,
+                        paddingSuperior = paddingSuperior
                     )
                 }
                 "circuits_and_poi" -> {
@@ -262,7 +305,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                             alHacerClicEnVerMas = { circuito ->
                                 viewModelPrincipal.seleccionarCircuito(circuito.id)
                                 pantallaActual = "circuit_detail"
-                            }
+                            },
+                            paddingSuperior = paddingSuperior
                         )
                     }
                 }
@@ -296,7 +340,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                             eventoSeleccionado = evento
                             pantallaActual = "event_detail"
                         },
-                        modoVista = pestanaSeleccionada
+                        modoVista = pestanaSeleccionada,
+                        paddingSuperior = paddingSuperior
                     )
                 }
                 "event_detail" -> {
@@ -314,7 +359,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                     }
                     PantallaPublicaciones(
                         viewModel = viewModelPublicaciones,
-                        alHacerClicEnSubir = { pantallaActual = "upload_publication" }
+                        alHacerClicEnSubir = { pantallaActual = "upload_publication" },
+                        paddingSuperior = paddingSuperior
                     )
                 }
                 "upload_publication" -> {
@@ -337,7 +383,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                         },
                         estaSubiendo = estaSubiendo,
                         subidaExitosa = subidaExitosa,
-                        mensajeError = mensajeError
+                        mensajeError = mensajeError,
+                        paddingSuperior = paddingSuperior
                     )
                 }
                 "upload_event" -> {
@@ -352,7 +399,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                         },
                         alSubir = { viewModelEventos.subirEvento(it) },
                         estaSubiendo = estaSubiendo,
-                        subidaExitosa = subidaExitosa
+                        subidaExitosa = subidaExitosa,
+                        paddingSuperior = paddingSuperior
                     )
                 }
             }
@@ -365,7 +413,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
 fun PantallaPrincipal(
     viewModelPrincipal: ViewModelPrincipal,
     alHacerClicEnPinCiudad: (Ciudad) -> Unit,
-    alHacerClicEnCiudad: (Ciudad) -> Unit
+    alHacerClicEnCiudad: (Ciudad) -> Unit,
+    paddingSuperior: Dp = 0.dp
 ) {
     val ciudades by viewModelPrincipal.ciudades
     val estaCargando by viewModelPrincipal.estaCargando
@@ -379,7 +428,7 @@ fun PantallaPrincipal(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp),
+                .padding(start = 20.dp, end = 20.dp, top = paddingSuperior + 8.dp, bottom = 76.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             TarjetaPrincipal(
@@ -395,54 +444,128 @@ fun PantallaPrincipal(
 }
 
 @Composable
-fun BarraSuperior(titulo: String? = null, alHacerClicEnPerfil: () -> Unit, alHacerClicEnLogo: () -> Unit) {
-    Row(
+fun BarraSuperior(
+    titulo: String? = null,
+    alHacerClicEnPerfil: () -> Unit,
+    alHacerClicEnLogo: () -> Unit,
+    alHacerClicEnAsistente: () -> Unit = {}
+) {
+    val formaBarraSuperior = GenericShape { size, _ ->
+        val w = size.width
+        val h = size.height
+        
+        val xCenter = w * (1.24f / 1.48f)
+        val halfBase = w * 0.058f
+        val xLeft = xCenter - halfBase
+        val xRight = xCenter + halfBase
+        val yPeak = h * 0.72f
+        
+        moveTo(0f, 0f)
+        lineTo(w, 0f)
+        lineTo(w, h)
+        lineTo(xRight, h)
+        cubicTo(
+            xRight - halfBase * 0.45f, h,
+            xCenter + halfBase * 0.35f, yPeak,
+            xCenter, yPeak
+        )
+        cubicTo(
+            xCenter - halfBase * 0.35f, yPeak,
+            xLeft + halfBase * 0.45f, h,
+            xLeft, h
+        )
+        lineTo(0f, h)
+        close()
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(formaBarraSuperior)
             .background(AzulPetroleo)
             .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(top = 2.dp, bottom = 6.dp),
+        contentAlignment = Alignment.Center
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.clickable { alHacerClicEnLogo() }.weight(1f)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (titulo != null) {
+            // Lado Izquierdo: Logo (y título opcional)
+            Box(
+                modifier = Modifier
+                    .weight(1.0f)
+                    .padding(start = 16.dp)
+                    .clickable { alHacerClicEnLogo() },
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (titulo != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logo),
+                            contentDescription = "Codice Logo",
+                            modifier = Modifier.height(28.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                        Text(
+                            text = titulo,
+                            color = GoldColor,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_logo),
+                        contentDescription = "Codice Logo",
+                        modifier = Modifier.height(34.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+            
+            // Icono del Asistente (Guardabarranco) a la izquierda del borde
+            Box(
+                modifier = Modifier
+                    .weight(0.28f)
+                    .clickable { alHacerClicEnAsistente() },
+                contentAlignment = Alignment.Center
+            ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_logo),
-                    contentDescription = "Codice Logo",
-                    modifier = Modifier.height(32.dp),
-                    contentScale = ContentScale.Fit
-                )
-                Text(
-                    text = titulo,
-                    color = GoldColor,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 10.dp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            } else {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_logo),
-                    contentDescription = "Codice Logo",
-                    modifier = Modifier.height(36.dp),
+                    painter = painterResource(id = R.drawable.iconasistente),
+                    contentDescription = "Asistente Guardabarranco",
+                    modifier = Modifier
+                        .height(34.dp)
+                        .offset(y = 6.5.dp, x = -5.5.dp),
                     contentScale = ContentScale.Fit
                 )
             }
+            
+            // Icono de Perfil (Usuario) a la derecha del borde
+            Box(
+                modifier = Modifier
+                    .weight(0.2f)
+                    .padding(end = 8.dp)
+                    .clickable { alHacerClicEnPerfil() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Perfil",
+                    tint = GoldColor,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .offset(y = 3.0.dp)
+                )
+            }
         }
-        
-        Icon(
-            imageVector = Icons.Default.Person,
-            contentDescription = "Perfil",
-            tint = GoldColor,
-            modifier = Modifier
-                .size(36.dp)
-                .clickable { alHacerClicEnPerfil() }
-        )
     }
 }
 
@@ -457,8 +580,7 @@ fun TarjetaPrincipal(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(0.92f),
+            .fillMaxSize(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = BlancoBase),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -580,13 +702,14 @@ fun BarraNavegacionInferior(
     val formaTresMonticulos = GenericShape { size, _ ->
         val w = size.width
         val h = size.height
-        val waveBaseY = 30f
-        val wavePeakY = -20f
+        val valleyY = h * 0.45f
+        val peakSideControlY = -h * 0.15f
+        val peakCenterControlY = -h * 0.25f
         
-        moveTo(0f, waveBaseY)
-        quadraticTo(w * 0.16f, waveBaseY - 20f, w * 0.33f, waveBaseY)
-        quadraticTo(w * 0.5f, wavePeakY, w * 0.67f, waveBaseY)
-        quadraticTo(w * 0.84f, waveBaseY - 20f, w, waveBaseY)
+        moveTo(0f, valleyY)
+        quadraticTo(w * 0.1667f, peakSideControlY, w * 0.3333f, valleyY)
+        quadraticTo(w * 0.5000f, peakCenterControlY, w * 0.6667f, valleyY)
+        quadraticTo(w * 0.8333f, peakSideControlY, w, valleyY)
         
         lineTo(w, h)
         lineTo(0f, h)
@@ -596,69 +719,65 @@ fun BarraNavegacionInferior(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(110.dp)
+            .height(60.dp)
             .clip(formaTresMonticulos)
             .background(AzulPetroleo)
-            .padding(bottom = 26.dp),
+            .padding(bottom = 6.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 25.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             val esPantallaPrincipal = pantallaActual == "main"
             
             // Botón Izquierdo: Eventos en la pantalla principal, botón de retroceso en todas las demás vistas
-            Icon(
-                imageVector = if (esPantallaPrincipal) {
-                    Icons.Default.Event
-                } else {
-                    Icons.AutoMirrored.Filled.ArrowBack
-                },
-                contentDescription = if (esPantallaPrincipal) "Eventos" else "Regresar",
-                tint = if (esPantallaPrincipal) GoldColor.copy(alpha = 0.5f) else GoldColor,
+            Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .weight(1f)
                     .clickable {
                         if (esPantallaPrincipal) {
                             alSeleccionarPestana(2) // Pestaña de eventos (Lista)
                         } else {
                             alHacerClicEnAtras()
                         }
-                    }
-            )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (esPantallaPrincipal) {
+                        Icons.Default.Event
+                    } else {
+                        Icons.AutoMirrored.Filled.ArrowBack
+                    },
+                    contentDescription = if (esPantallaPrincipal) "Eventos" else "Regresar",
+                    tint = if (esPantallaPrincipal) GoldColor.copy(alpha = 0.5f) else GoldColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
 
             // Botón Central: Inicio
-            Icon(
-                Icons.Default.Home,
-                contentDescription = "Inicio",
-                tint = GoldColor,
+            Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .padding(bottom = 12.dp)
-                    .clickable { alHacerClicEnInicio() }
-            )
+                    .weight(1f)
+                    .clickable { alHacerClicEnInicio() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Home,
+                    contentDescription = "Inicio",
+                    tint = GoldColor,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .padding(bottom = 2.dp)
+                )
+            }
 
             // Botón Derecho: Alternar vista en eventos / circuitos y puntos de interés, o Publicaciones / Agregar Publicación
-            Icon(
-                imageVector = when (pantallaActual) {
-                    "publications" -> Icons.Default.AddPhotoAlternate
-                    "events" -> if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
-                    "circuits_and_poi" -> if (pestanaSeleccionada == 0) Icons.Default.LocationOn else Icons.Default.Map
-                    else -> Icons.Default.PhotoLibrary
-                },
-                contentDescription = when (pantallaActual) {
-                    "publications" -> "Nueva Publicación"
-                    "events" -> "Alternar vista"
-                    "circuits_and_poi" -> if (pestanaSeleccionada == 0) "Puntos de Interés" else "Circuitos"
-                    else -> "Publicaciones"
-                },
-                tint = if (pantallaActual == "publications" || pantallaActual == "circuits_and_poi") GoldColor else GoldColor.copy(alpha = 0.5f),
+            Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .weight(1f)
                     .clickable {
                         when (pantallaActual) {
                             "publications" -> {
@@ -676,9 +795,40 @@ fun BarraNavegacionInferior(
                                 alHacerClicEnExplorar()
                             }
                         }
-                    }
-            )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = when (pantallaActual) {
+                        "publications" -> Icons.Default.AddPhotoAlternate
+                        "events" -> if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
+                        "circuits_and_poi" -> if (pestanaSeleccionada == 0) Icons.Default.LocationOn else Icons.Default.Map
+                        else -> Icons.Default.PhotoLibrary
+                    },
+                    contentDescription = when (pantallaActual) {
+                        "publications" -> "Nueva Publicación"
+                        "events" -> "Alternar vista"
+                        "circuits_and_poi" -> if (pestanaSeleccionada == 0) "Puntos de Interés" else "Circuitos"
+                        else -> "Publicaciones"
+                    },
+                    tint = if (pantallaActual == "publications" || pantallaActual == "circuits_and_poi") GoldColor else GoldColor.copy(alpha = 0.5f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun VistaPreviaBarraNavegacionInferior() {
+    Codice路Theme {
+        BarraNavegacionInferior(
+            pantallaActual = "main",
+            pestanaSeleccionada = 0,
+            alHacerClicEnInicio = {},
+            alSeleccionarPestana = {}
+        )
     }
 }
 

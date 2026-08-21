@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codise.utils.aUrlCompleta
@@ -41,7 +42,8 @@ import com.example.codise.utils.aUrlCompleta
 fun PantallaCircuitosYPuntos(
     ciudad: Ciudad,
     pestanaSeleccionada: Int,
-    alHacerClicEnVerMas: (Circuito) -> Unit
+    alHacerClicEnVerMas: (Circuito) -> Unit,
+    paddingSuperior: Dp = 0.dp
 ) {
     Box(
         modifier = Modifier
@@ -49,21 +51,25 @@ fun PantallaCircuitosYPuntos(
             .background(Color(0xFFF5F9FF))
     ) {
         when (pestanaSeleccionada) {
-            0 -> ListaCircuitos(ciudad.circuitos, alHacerClicEnVerMas)
-            1 -> ListaPuntosInteres(ciudad.circuitos.flatMap { it.puntosInteres })
-            else -> ListaCircuitos(ciudad.circuitos, alHacerClicEnVerMas)
+            0 -> ListaCircuitos(ciudad.circuitos, alHacerClicEnVerMas, paddingSuperior)
+            1 -> ListaPuntosInteres(ciudad.circuitos.flatMap { it.puntosInteres }, paddingSuperior)
+            else -> ListaCircuitos(ciudad.circuitos, alHacerClicEnVerMas, paddingSuperior)
         }
     }
 }
 
 @Composable
-fun ListaCircuitos(circuitos: List<Circuito>, alHacerClicEnVerMas: (Circuito) -> Unit) {
+fun ListaCircuitos(
+    circuitos: List<Circuito>,
+    alHacerClicEnVerMas: (Circuito) -> Unit,
+    paddingSuperior: Dp = 0.dp
+) {
     if (circuitos.isEmpty()) {
-        EstadoVacio("No hay circuitos disponibles.")
+        EstadoVacio("No hay circuitos disponibles.", Modifier.padding(top = paddingSuperior))
     } else {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = paddingSuperior + 8.dp, end = 16.dp, bottom = 76.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             items(circuitos) { circuito ->
@@ -74,13 +80,16 @@ fun ListaCircuitos(circuitos: List<Circuito>, alHacerClicEnVerMas: (Circuito) ->
 }
 
 @Composable
-fun ListaPuntosInteres(puntos: List<PuntoInteres>) {
+fun ListaPuntosInteres(
+    puntos: List<PuntoInteres>,
+    paddingSuperior: Dp = 0.dp
+) {
     if (puntos.isEmpty()) {
-        EstadoVacio("No hay puntos de interés disponibles.")
+        EstadoVacio("No hay puntos de interés disponibles.", Modifier.padding(top = paddingSuperior))
     } else {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = paddingSuperior + 8.dp, end = 16.dp, bottom = 76.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             items(puntos) { punto ->
@@ -91,8 +100,8 @@ fun ListaPuntosInteres(puntos: List<PuntoInteres>) {
 }
 
 @Composable
-fun EstadoVacio(mensaje: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+fun EstadoVacio(mensaje: String, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(mensaje, color = AzulPetroleo)
     }
 }

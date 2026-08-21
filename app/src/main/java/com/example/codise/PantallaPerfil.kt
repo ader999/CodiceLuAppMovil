@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codise.data.Empresa
@@ -35,7 +36,8 @@ fun ContenidoPerfil(
     estadoUiEmpresa: EstadoUiEmpresa,
     alRegistrarEmpresa: (String, Empresa) -> Unit,
     ciudades: List<Ciudad>,
-    alCerrarSesion: () -> Unit
+    alCerrarSesion: () -> Unit,
+    paddingSuperior: Dp = 0.dp
 ) {
     var nombre by remember { mutableStateOf(usuario.nombre) }
     var apellido by remember { mutableStateOf(usuario.apellido) }
@@ -48,7 +50,7 @@ fun ContenidoPerfil(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp)
+            .padding(start = 20.dp, end = 20.dp, top = paddingSuperior + 16.dp, bottom = 80.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

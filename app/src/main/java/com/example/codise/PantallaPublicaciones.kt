@@ -34,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -51,7 +52,8 @@ import java.util.Locale
 @Composable
 fun PantallaPublicaciones(
     viewModel: ViewModelPublicaciones,
-    alHacerClicEnSubir: () -> Unit = {}
+    alHacerClicEnSubir: () -> Unit = {},
+    paddingSuperior: Dp = 0.dp
 ) {
     val estadoUi by viewModel.estadoUi
     var imagenesVistaPrevia by remember { mutableStateOf<List<String>?>(null) }
@@ -71,7 +73,7 @@ fun PantallaPublicaciones(
                 }
                 is EstadoUiPublicaciones.Error -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
+                        modifier = Modifier.align(Alignment.Center).padding(top = paddingSuperior),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(text = (estadoUi as EstadoUiPublicaciones.Error).mensaje, color = Color.Red)
@@ -83,11 +85,12 @@ fun PantallaPublicaciones(
                 is EstadoUiPublicaciones.Exito -> {
                     val publicaciones = (estadoUi as EstadoUiPublicaciones.Exito).publicaciones
                     if (publicaciones.isEmpty()) {
-                        EstadoPublicacionesVacio()
+                        EstadoPublicacionesVacio(modifier = Modifier.padding(top = paddingSuperior))
                     } else {
                         LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            contentPadding = PaddingValues(start = 16.dp, top = paddingSuperior + 8.dp, end = 16.dp, bottom = 76.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             items(publicaciones) { publicacion ->
                                 TarjetaPublicacion(
@@ -133,9 +136,9 @@ fun PantallaPublicaciones(
 }
 
 @Composable
-fun EstadoPublicacionesVacio() {
+fun EstadoPublicacionesVacio(modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

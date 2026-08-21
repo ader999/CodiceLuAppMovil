@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -52,7 +53,8 @@ fun PantallaSubirPublicacion(
     alSubir: (String, Int?, Int?, Int?, List<Uri>) -> Unit,
     estaSubiendo: Boolean,
     subidaExitosa: Boolean,
-    mensajeError: String? = null
+    mensajeError: String? = null,
+    paddingSuperior: Dp = 0.dp
 ) {
     var descripcion by remember { mutableStateOf("") }
     var urisImagenesSeleccionadas by remember { mutableStateOf<List<Uri>>(emptyList()) }
@@ -86,7 +88,7 @@ fun PantallaSubirPublicacion(
     Card(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = paddingSuperior + 8.dp, bottom = 76.dp),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = BlancoBase),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -94,7 +96,7 @@ fun PantallaSubirPublicacion(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 80.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.codise.data.Ciudad
 import com.example.codise.data.SolicitudEvento
@@ -23,7 +24,8 @@ fun PantallaSubirEvento(
     alVolver: () -> Unit,
     alSubir: (SolicitudEvento) -> Unit,
     estaSubiendo: Boolean,
-    subidaExitosa: Boolean
+    subidaExitosa: Boolean,
+    paddingSuperior: Dp = 0.dp
 ) {
     var titulo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
@@ -45,7 +47,7 @@ fun PantallaSubirEvento(
     Card(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = paddingSuperior + 8.dp, bottom = 76.dp),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = BlancoBase),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -53,7 +55,7 @@ fun PantallaSubirEvento(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 80.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

@@ -58,7 +58,7 @@ fun PantallaDetalleCircuito(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp),
+            contentPadding = PaddingValues(bottom = 76.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // Encabezado con información del circuito

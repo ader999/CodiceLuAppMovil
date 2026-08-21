@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -38,7 +39,8 @@ fun PantallaEventos(
     puedeSubir: Boolean,
     alHacerClicEnSubir: () -> Unit,
     alHacerClicEnEvento: (Evento) -> Unit,
-    modoVista: Int // 2 para Lista, 3 para Calendario
+    modoVista: Int, // 2 para Lista, 3 para Calendario
+    paddingSuperior: Dp = 0.dp
 ) {
     val estadoUi by viewModel.estadoUi
 
@@ -65,25 +67,30 @@ fun PantallaEventos(
                     Text(
                         text = (estadoUi as EstadoUiEventos.Error).mensaje,
                         color = Color.Red,
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier.align(Alignment.Center).padding(top = paddingSuperior)
                     )
                 }
                 is EstadoUiEventos.Exito -> {
                     val eventos = (estadoUi as EstadoUiEventos.Exito).eventos
                     if (eventos.isEmpty()) {
-                        EstadoEventosVacio()
+                        EstadoEventosVacio(modifier = Modifier.padding(top = paddingSuperior))
                     } else {
                         if (modoVista == 2) {
                             LazyColumn(
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                                contentPadding = PaddingValues(start = 16.dp, top = paddingSuperior + 8.dp, end = 16.dp, bottom = 76.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 items(eventos) { evento ->
                                     TarjetaEvento(evento, alHacerClicEnEvento)
                                 }
                             }
                         } else {
-                            VistaCalendarioEventos(eventos, alHacerClicEnEvento)
+                            VistaCalendarioEventos(
+                                eventos = eventos,
+                                alHacerClicEnEvento = alHacerClicEnEvento,
+                                modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = paddingSuperior + 8.dp, bottom = 76.dp)
+                            )
                         }
                     }
                 }
@@ -94,9 +101,9 @@ fun PantallaEventos(
 }
 
 @Composable
-fun EstadoEventosVacio() {
+fun EstadoEventosVacio(modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -216,7 +223,11 @@ fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
 }
 
 @Composable
-fun VistaCalendarioEventos(eventos: List<Evento>, alHacerClicEnEvento: (Evento) -> Unit) {
+fun VistaCalendarioEventos(
+    eventos: List<Evento>,
+    alHacerClicEnEvento: (Evento) -> Unit,
+    modifier: Modifier = Modifier
+) {
     var fechaSeleccionada by remember { mutableStateOf(LocalDate.now()) }
     val mesActual = remember(fechaSeleccionada) { YearMonth.from(fechaSeleccionada) }
     
@@ -233,7 +244,7 @@ fun VistaCalendarioEventos(eventos: List<Evento>, alHacerClicEnEvento: (Evento) 
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = modifier) {
         // Encabezado Calendario
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -327,6 +338,7 @@ fun VistaCalendarioEventos(eventos: List<Evento>, alHacerClicEnEvento: (Evento) 
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = 76.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(eventosFechaSeleccionada) { evento ->
