@@ -39,11 +39,19 @@ fun ContenidoPerfil(
     alCerrarSesion: () -> Unit,
     paddingSuperior: Dp = 0.dp
 ) {
-    var nombre by remember { mutableStateOf(usuario.nombre) }
-    var apellido by remember { mutableStateOf(usuario.apellido) }
-    var nombreUsuario by remember { mutableStateOf(usuario.nombreUsuario) }
-    var correo by remember { mutableStateOf(usuario.correoElectronico) }
-    var telefono by remember { mutableStateOf(usuario.telefono) }
+    var nombre by remember(usuario) { mutableStateOf(usuario.nombre.orEmpty()) }
+    var apellido by remember(usuario) { mutableStateOf(usuario.apellido.orEmpty()) }
+    var nombreUsuario by remember(usuario) { mutableStateOf(usuario.nombreUsuario.orEmpty()) }
+    var correo by remember(usuario) { mutableStateOf(usuario.correoElectronico.orEmpty()) }
+    var telefono by remember(usuario) { mutableStateOf(usuario.telefono.orEmpty()) }
+
+    LaunchedEffect(usuario) {
+        nombre = usuario.nombre.orEmpty()
+        apellido = usuario.apellido.orEmpty()
+        nombreUsuario = usuario.nombreUsuario.orEmpty()
+        correo = usuario.correoElectronico.orEmpty()
+        telefono = usuario.telefono.orEmpty()
+    }
 
     var mostrarFormularioEmpresa by remember { mutableStateOf(false) }
 
