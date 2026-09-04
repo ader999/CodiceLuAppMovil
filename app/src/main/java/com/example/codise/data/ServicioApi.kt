@@ -22,6 +22,11 @@ interface ServicioApi {
     @POST("api/auth/google/")
     suspend fun autenticarConGoogle(@Body solicitud: SolicitudAuthGoogle): Response<RespuestaAutenticacion>
 
+    @GET("api/auth/me/")
+    suspend fun obtenerPerfil(
+        @Header("Authorization") token: String
+    ): Response<Usuario>
+
     @PATCH("api/auth/me/")
     suspend fun actualizarPerfil(
         @Header("Authorization") token: String,
@@ -80,6 +85,11 @@ interface ServicioApi {
         @Header("Authorization") token: String,
         @Path("id") idEvento: Int
     ): Response<RespuestaAsistencia>
+
+    @GET("api/empresas/")
+    suspend fun obtenerEmpresas(
+        @Query("usuario") idUsuario: Int? = null
+    ): Response<List<Empresa>>
 
     @POST("api/empresas/")
     suspend fun registrarEmpresa(

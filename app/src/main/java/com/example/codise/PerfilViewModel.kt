@@ -32,6 +32,69 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
     private val _estadoUiEmpresa = MutableStateFlow<EstadoUiEmpresa>(EstadoUiEmpresa.Inactivo)
     val estadoUiEmpresa: StateFlow<EstadoUiEmpresa> = _estadoUiEmpresa
 
+    private val _empresasUsuario = MutableStateFlow<List<Empresa>>(emptyList())
+    val empresasUsuario: StateFlow<List<Empresa>> = _empresasUsuario
+
+    fun cargarPerfilYEmpresas(token: String, usuario: Usuario) {
+        viewModelScope.launch {
+            try {
+                val encabezadoAuth = if (token.startsWith("Bearer ")) token else "Bearer $token"
+
+                // 1. Obtener empresas registradas por el usuario
+                var empresas: List<Empresa> = emptyList()
+                if (usuario.id != null) {
+                    val respEmpresas = servicioApi.obtenerEmpresas(usuario.id)
+                    if (respEmpresas.isSuccessful && respEmpresas.body() != null) {
+                        empresas = respEmpresas.body()!!
+                    }
+                }
+
+                // Si la consulta por ID está vacía, consultar todas y filtrar por ID o nombre de usuario
+                if (empresas.isEmpty()) {
+                    val respTodas = servicioApi.obtenerEmpresas()
+                    if (respTodas.isSuccessful && respTodas.body() != null) {
+                        empresas = respTodas.body()!!.filter { emp ->
+                            (usuario.id != null && emp.usuario == usuario.id) ||
+                            (!usuario.nombreUsuario.isNullOrBlank() && emp.usuarioNombreUsuario.equals(usuario.nombreUsuario, ignoreCase = true))
+                        }
+                    }
+                }
+                _empresasUsuario.value = empresas
+
+                // 2. Obtener datos actualizados del perfil desde el backend
+                var perfilRemoto: Usuario? = null
+                try {
+                    val respPerfil = servicioApi.obtenerPerfil(encabezadoAuth)
+                    if (respPerfil.isSuccessful && respPerfil.body() != null) {
+                        perfilRemoto = respPerfil.body()
+                    }
+                } catch (_: Exception) { }
+
+                // 3. Determinar el rol: si tiene al menos una empresa o ya está marcado como protagonista
+                val tieneEmpresas = empresas.isNotEmpty()
+                val esProtagonista = tieneEmpresas || (perfilRemoto?.esProtagonista == true) || usuario.esProtagonista
+
+                val baseUsuario = perfilRemoto ?: usuario
+                val usuarioActualizado = baseUsuario.copy(
+                    esProtagonista = esProtagonista,
+                    esTurista = if (esProtagonista) false else baseUsuario.esTurista
+                )
+
+                administradorSesion.obtenerSesion()?.let { sesionActual ->
+                    administradorSesion.guardarSesion(sesionActual.copy(usuario = usuarioActualizado))
+                }
+                _estadoUi.value = EstadoUiPerfil.Exito(usuarioActualizado)
+
+                // Si tiene empresas pero su perfil en el servidor aún no tiene es_protagonista=true, sincronizar
+                if (tieneEmpresas && perfilRemoto?.esProtagonista != true) {
+                    try {
+                        servicioApi.actualizarPerfil(encabezadoAuth, Usuario(esProtagonista = true, esTurista = false))
+                    } catch (_: Exception) { }
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
     fun actualizarPerfil(token: String, usuario: Usuario, uriFoto: Uri? = null) {
         viewModelScope.launch {
             _estadoUi.value = EstadoUiPerfil.Cargando
@@ -152,20 +215,49 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
                 val respuesta = servicioApi.registrarEmpresa(encabezadoAuth, empresa)
                 if (respuesta.isSuccessful) {
                     val empresaRegistrada = respuesta.body()!!
-                    
+                    _empresasUsuario.value = _empresasUsuario.value + empresaRegistrada
+
+                    try {
+                        servicioApi.actualizarPerfil(encabezadoAuth, Usuario(esProtagonista = true, esTurista = false))
+                    } catch (_: Exception) { }
+
                     administradorSesion.obtenerSesion()?.let { sesionActual ->
-                        val usuarioActualizado = sesionActual.usuario.copy(esProtagonista = true)
+                        val usuarioActualizado = sesionActual.usuario.copy(esProtagonista = true, esTurista = false)
                         administradorSesion.guardarSesion(sesionActual.copy(usuario = usuarioActualizado))
                         _estadoUi.value = EstadoUiPerfil.Exito(usuarioActualizado)
                     }
 
                     _estadoUiEmpresa.value = EstadoUiEmpresa.Exito(empresaRegistrada)
                 } else {
-                    _estadoUiEmpresa.value = EstadoUiEmpresa.Error("Error: ${respuesta.code()} - ${respuesta.message()}")
+                    val cuerpoError = respuesta.errorBody()?.string()
+                    val mensajeError = parsearMensajeError(cuerpoError, respuesta.code(), respuesta.message())
+                    _estadoUiEmpresa.value = EstadoUiEmpresa.Error(mensajeError)
                 }
             } catch (e: Exception) {
                 _estadoUiEmpresa.value = EstadoUiEmpresa.Error(e.message ?: "Error desconocido")
             }
+        }
+    }
+
+    private fun parsearMensajeError(cuerpoError: String?, codigo: Int, mensajeHttp: String): String {
+        if (cuerpoError.isNullOrBlank()) return "Error: $codigo - $mensajeHttp"
+        return try {
+            val json = org.json.JSONObject(cuerpoError)
+            val detalles = mutableListOf<String>()
+            val iterador = json.keys()
+            while (iterador.hasNext()) {
+                val clave = iterador.next()
+                val valor = json.get(clave)
+                if (valor is org.json.JSONArray) {
+                    val mensajes = (0 until valor.length()).map { valor.getString(it) }.joinToString(", ")
+                    detalles.add("$clave: $mensajes")
+                } else {
+                    detalles.add("$clave: $valor")
+                }
+            }
+            if (detalles.isNotEmpty()) detalles.joinToString("\n") else "Error: $codigo - $mensajeHttp"
+        } catch (e: Exception) {
+            cuerpoError.take(200)
         }
     }
 }

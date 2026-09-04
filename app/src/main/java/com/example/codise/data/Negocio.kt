@@ -23,3 +23,17 @@ data class Empresa(
     @SerializedName("acepta_inversiones") val aceptaInversiones: Boolean,
     @SerializedName("fecha_creacion") val fechaCreacion: String? = null
 )
+
+data class OpcionCategoriaEmpresa(
+    val clave: String,
+    val etiqueta: String
+)
+
+val CATEGORIAS_EMPRESA = listOf(
+    OpcionCategoriaEmpresa("Gastronomia", "Gastronomía / Restaurante"),
+    OpcionCategoriaEmpresa("Hospedaje", "Hotel / Hospedaje"),
+    OpcionCategoriaEmpresa("Taller", "Taller Artesanal / Galería"),
+    OpcionCategoriaEmpresa("Destino", "Destino Turístico / Sitio de Interés"),
+    OpcionCategoriaEmpresa("Servicios", "Servicios Turísticos / Tours"),
+    OpcionCategoriaEmpresa("Otro", "Otro")
+)

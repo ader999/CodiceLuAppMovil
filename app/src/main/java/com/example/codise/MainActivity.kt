@@ -84,6 +84,15 @@ fun AplicacionPrincipal() {
 fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () -> Unit) {
     val viewModelPerfil: ViewModelPerfil = viewModel()
     val estadoUiPerfil by viewModelPerfil.estadoUi.collectAsState()
+    val empresasUsuario by viewModelPerfil.empresasUsuario.collectAsState()
+    val usuarioActual = when (val estado = estadoUiPerfil) {
+        is EstadoUiPerfil.Exito -> estado.usuario
+        else -> usuario
+    }
+
+    LaunchedEffect(usuario.id, usuario.nombreUsuario, token) {
+        viewModelPerfil.cargarPerfilYEmpresas(token, usuario)
+    }
     val viewModelPrincipal: ViewModelPrincipal = viewModel()
     val viewModelEventos: ViewModelEventos = viewModel()
     val viewModelPublicaciones: ViewModelPublicaciones = viewModel()
@@ -166,6 +175,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
         val observador = LifecycleEventObserver { _, evento ->
             if (evento == Lifecycle.Event.ON_RESUME) {
                 viewModelPrincipal.obtenerCiudades()
+                viewModelPerfil.cargarPerfilYEmpresas(token, usuarioActual)
             }
         }
         propietarioCicloVida.lifecycle.addObserver(observador)
@@ -218,7 +228,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
             }
             BarraSuperior(
                 titulo = tituloBarraSuperior,
-                fotoPerfil = usuario.fotoPerfil,
+                fotoPerfil = usuarioActual.fotoPerfil,
                 alHacerClicEnPerfil = {
                     pantallaActual = "profile"
                     mostrarFormularioPerfil = false
@@ -310,7 +320,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                     val estadoUiEmpresa by viewModelPerfil.estadoUiEmpresa.collectAsState()
                     val ciudades by viewModelPrincipal.ciudades
                     ContenidoPerfil(
-                        usuario = usuario,
+                        usuario = usuarioActual,
                         token = token,
                         alVolver = {
                             if (mostrarFormularioPerfil) {
@@ -332,6 +342,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                         alCerrarSesion = alCerrarSesion,
                         mostrarFormulario = mostrarFormularioPerfil,
                         alAlternarFormulario = { mostrarFormularioPerfil = !mostrarFormularioPerfil },
+                        empresasUsuario = empresasUsuario,
                         paddingSuperior = paddingSuperior
                     )
                 }
@@ -372,7 +383,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                 "events" -> {
                     PantallaEventos(
                         viewModel = viewModelEventos,
-                        puedeSubir = usuario.esProtagonista,
+                        puedeSubir = usuarioActual.esProtagonista || empresasUsuario.isNotEmpty(),
                         alHacerClicEnSubir = { pantallaActual = "upload_event" },
                         alHacerClicEnEvento = { evento ->
                             eventoSeleccionado = evento
