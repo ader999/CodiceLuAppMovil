@@ -45,8 +45,13 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.codise.data.Ciudad
 import com.example.codise.data.Evento
+import com.example.codise.data.GestorIdioma
+import com.example.codise.data.IdiomaApp
+import com.example.codise.data.ServicioApi
 import com.example.codise.data.Usuario
 import com.example.codise.ui.theme.*
+import com.example.codise.utils.CadenasIdiomas
+import com.example.codise.utils.LocalCadenas
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
@@ -65,23 +70,42 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AplicacionPrincipal() {
-    val viewModelLogin: ViewModelLogin = viewModel()
-    val estadoUi by viewModelLogin.estadoUi.collectAsState()
+    val contexto = LocalContext.current
+    val gestorIdioma = remember { GestorIdioma.obtenerInstancia(contexto) }
+    val idiomaActual by gestorIdioma.idiomaActual.collectAsState()
+    val cadenas = remember(idiomaActual) { CadenasIdiomas.obtener(idiomaActual) }
 
-    if (estadoUi is EstadoUiLogin.Exito) {
-        val respuesta = (estadoUi as EstadoUiLogin.Exito).respuesta
-        AplicacionAutenticada(
-            usuario = respuesta.usuario,
-            token = respuesta.tokens.access,
-            alCerrarSesion = { viewModelLogin.cerrarSesion() }
-        )
-    } else {
-        PantallaLogin(viewModelLogin)
+    CompositionLocalProvider(LocalCadenas provides cadenas) {
+        val viewModelLogin: ViewModelLogin = viewModel()
+        val estadoUi by viewModelLogin.estadoUi.collectAsState()
+
+        if (estadoUi is EstadoUiLogin.Exito) {
+            val respuesta = (estadoUi as EstadoUiLogin.Exito).respuesta
+            AplicacionAutenticada(
+                usuario = respuesta.usuario,
+                token = respuesta.tokens.access,
+                alCerrarSesion = { viewModelLogin.cerrarSesion() },
+                gestorIdioma = gestorIdioma,
+                idiomaActual = idiomaActual
+            )
+        } else {
+            PantallaLogin(
+                viewModel = viewModelLogin,
+                gestorIdioma = gestorIdioma,
+                idiomaActual = idiomaActual
+            )
+        }
     }
 }
 
 @Composable
-fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () -> Unit) {
+fun AplicacionAutenticada(
+    usuario: Usuario,
+    token: String,
+    alCerrarSesion: () -> Unit,
+    gestorIdioma: GestorIdioma,
+    idiomaActual: IdiomaApp
+) {
     val viewModelPerfil: ViewModelPerfil = viewModel()
     val estadoUiPerfil by viewModelPerfil.estadoUi.collectAsState()
     val empresasUsuario by viewModelPerfil.empresasUsuario.collectAsState()
@@ -184,7 +208,25 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
         }
     }
 
+    val cadenas = LocalCadenas.current
     var mostrarDialogoAsistente by remember { mutableStateOf(false) }
+    var mostrarDialogoIdioma by remember { mutableStateOf(false) }
+
+    val cambiarIdiomaApp: (IdiomaApp) -> Unit = { nuevoIdioma ->
+        gestorIdioma.cambiarIdioma(nuevoIdioma)
+        ServicioApi.limpiarCache()
+        viewModelPrincipal.obtenerCiudades(forzar = true)
+        viewModelEventos.obtenerEventos()
+        viewModelPublicaciones.obtenerPublicaciones()
+    }
+
+    if (mostrarDialogoIdioma) {
+        DialogoSeleccionIdioma(
+            idiomaActual = idiomaActual,
+            alSeleccionarIdioma = cambiarIdiomaApp,
+            alCerrar = { mostrarDialogoIdioma = false }
+        )
+    }
 
     if (mostrarDialogoAsistente) {
         AlertDialog(
@@ -199,20 +241,20 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
             },
             title = {
                 Text(
-                    text = "Asistente Guardabarranco",
+                    text = cadenas.asistenteTitulo,
                     fontWeight = FontWeight.Bold,
                     color = AzulPetroleo
                 )
             },
             text = {
                 Text(
-                    text = "¡Hola! Soy tu asistente Guardabarranco. Pronto podré ayudarte con recomendaciones turísticas personalizadas, rutas y eventos en Nicaragua.",
+                    text = cadenas.asistenteMensaje,
                     color = AzulPetroleo.copy(alpha = 0.8f)
                 )
             },
             confirmButton = {
                 TextButton(onClick = { mostrarDialogoAsistente = false }) {
-                    Text("Entendido", color = GoldColor, fontWeight = FontWeight.Bold)
+                    Text(cadenas.entendido, color = GoldColor, fontWeight = FontWeight.Bold)
                 }
             },
             containerColor = BlancoBase,
@@ -228,6 +270,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
             BarraSuperior(
                 titulo = tituloBarraSuperior,
                 fotoPerfil = usuarioActual.fotoPerfil,
+                idiomaActual = idiomaActual,
                 alHacerClicEnPerfil = {
                     pantallaActual = "profile"
                     mostrarFormularioPerfil = false
@@ -236,7 +279,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                     pantallaActual = "main"
                     mostrarFormularioPerfil = false
                 },
-                alHacerClicEnAsistente = { mostrarDialogoAsistente = true }
+                alHacerClicEnAsistente = { mostrarDialogoAsistente = true },
+                alHacerClicEnIdioma = { mostrarDialogoIdioma = true }
             )
         },
         bottomBar = {
@@ -342,6 +386,8 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                         mostrarFormulario = mostrarFormularioPerfil,
                         alAlternarFormulario = { mostrarFormularioPerfil = !mostrarFormularioPerfil },
                         empresasUsuario = empresasUsuario,
+                        idiomaActual = idiomaActual,
+                        alCambiarIdioma = { mostrarDialogoIdioma = true },
                         paddingSuperior = paddingSuperior
                     )
                 }
@@ -495,9 +541,11 @@ fun PantallaPrincipal(
 fun BarraSuperior(
     titulo: String? = null,
     fotoPerfil: String? = null,
+    idiomaActual: IdiomaApp = IdiomaApp.ESPANOL,
     alHacerClicEnPerfil: () -> Unit,
     alHacerClicEnLogo: () -> Unit,
-    alHacerClicEnAsistente: () -> Unit = {}
+    alHacerClicEnAsistente: () -> Unit = {},
+    alHacerClicEnIdioma: () -> Unit = {}
 ) {
     val formaBarraSuperior = GenericShape { size, _ ->
         val w = size.width
@@ -580,10 +628,20 @@ fun BarraSuperior(
                 }
             }
             
+            // Selector de Idioma (Español, English, 中文)
+            BotonSelectorIdioma(
+                idiomaActual = idiomaActual,
+                alHacerClic = alHacerClicEnIdioma,
+                modifier = Modifier
+                    .offset(x = (-16).dp)
+                    .padding(horizontal = 4.dp)
+            )
+
             // Icono del Asistente (Guardabarranco) a la izquierda del borde
             Box(
                 modifier = Modifier
                     .weight(0.28f)
+                    .offset(x = (-14).dp)
                     .clickable { alHacerClicEnAsistente() },
                 contentAlignment = Alignment.Center
             ) {
@@ -641,6 +699,8 @@ fun TarjetaPrincipal(
     alHacerClicEnPin: (Ciudad) -> Unit,
     alHacerClicEnCiudad: (Ciudad) -> Unit
 ) {
+    val cadenas = LocalCadenas.current
+
     Card(
         modifier = Modifier
             .fillMaxSize(),
@@ -667,7 +727,7 @@ fun TarjetaPrincipal(
                     modifier = Modifier.fillMaxSize(0.8f)
                 )
                 Text(
-                    "NICARAGUA",
+                    cadenas.nicaragua,
                     color = AzulPetroleo.copy(alpha = 0.2f),
                     fontWeight = FontWeight.Black,
                     fontSize = 24.sp
@@ -687,7 +747,7 @@ fun TarjetaPrincipal(
                     ) {
                         Text(text = error, color = MaterialTheme.colorScheme.error)
                         Button(onClick = alRefrescar, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
-                            Text("Reintentar")
+                            Text(cadenas.reintentar)
                         }
                     }
                 } else {
@@ -709,6 +769,7 @@ fun TarjetaPrincipal(
 
 @Composable
 fun ElementoUbicacion(nombre: String, alHacerClicEnPin: () -> Unit, alHacerClicEnCiudad: () -> Unit) {
+    val cadenas = LocalCadenas.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -743,7 +804,7 @@ fun ElementoUbicacion(nombre: String, alHacerClicEnPin: () -> Unit, alHacerClicE
             IconButton(onClick = alHacerClicEnPin) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
-                    contentDescription = "Circuitos y Puntos de Interés",
+                    contentDescription = cadenas.circuitosTuristicos,
                     tint = GoldColor,
                     modifier = Modifier.size(32.dp)
                 )
@@ -764,6 +825,7 @@ fun BarraNavegacionInferior(
     alAlternarFormularioPerfil: () -> Unit = {},
     alHacerClicEnAtras: () -> Unit = {}
 ) {
+    val cadenas = LocalCadenas.current
     val formaTresMonticulos = GenericShape { size, _ ->
         val w = size.width
         val h = size.height
@@ -816,7 +878,7 @@ fun BarraNavegacionInferior(
                     } else {
                         Icons.AutoMirrored.Filled.ArrowBack
                     },
-                    contentDescription = if (esPantallaPrincipal) "Eventos" else "Regresar",
+                    contentDescription = if (esPantallaPrincipal) cadenas.eventos else cadenas.regresar,
                     tint = if (esPantallaPrincipal) GoldColor.copy(alpha = 0.5f) else GoldColor,
                     modifier = Modifier.size(28.dp)
                 )
@@ -831,7 +893,7 @@ fun BarraNavegacionInferior(
             ) {
                 Icon(
                     imageVector = Icons.Default.Home,
-                    contentDescription = "Inicio",
+                    contentDescription = cadenas.inicio,
                     tint = GoldColor,
                     modifier = Modifier
                         .size(32.dp)
@@ -875,11 +937,11 @@ fun BarraNavegacionInferior(
                         else -> Icons.Default.PhotoLibrary
                     },
                     contentDescription = when (pantallaActual) {
-                        "publications" -> "Nueva Publicación"
-                        "events" -> "Alternar vista"
-                        "circuits_and_poi" -> if (pestanaSeleccionada == 0) "Puntos de Interés" else "Circuitos"
-                        "profile" -> if (mostrarFormularioPerfil) "Ver Perfil" else "Editar Perfil"
-                        else -> "Publicaciones"
+                        "publications" -> cadenas.nuevaPublicacion
+                        "events" -> cadenas.eventos
+                        "circuits_and_poi" -> if (pestanaSeleccionada == 0) cadenas.puntosDeInteres else cadenas.circuitos
+                        "profile" -> if (mostrarFormularioPerfil) cadenas.perfil else cadenas.editarPerfil
+                        else -> cadenas.publicaciones
                     },
                     tint = if (pantallaActual in listOf("publications", "circuits_and_poi", "profile")) GoldColor else GoldColor.copy(alpha = 0.5f),
                     modifier = Modifier.size(28.dp)

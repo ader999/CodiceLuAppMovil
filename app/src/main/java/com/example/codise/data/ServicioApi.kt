@@ -160,14 +160,25 @@ interface ServicioApi {
     companion object {
         const val URL_BASE = "https://codisecore-production.up.railway.app/"
         private var instancia: ServicioApi? = null
+        private var cacheOkHttp: Cache? = null
+
+        fun limpiarCache() {
+            try {
+                cacheOkHttp?.evictAll()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
         fun obtenerInstancia(contexto: Context): ServicioApi {
             return instancia ?: synchronized(this) {
                 val tamanoCache = (5 * 1024 * 1024).toLong() // 5 MB
                 val cache = Cache(contexto.cacheDir, tamanoCache)
+                cacheOkHttp = cache
 
                 val okHttpClient = OkHttpClient.Builder()
                     .cache(cache)
+                    .addInterceptor(InterceptorIdioma(contexto))
                     .addInterceptor(InterceptorAutenticacion(contexto))
                     .protocols(listOf(Protocol.HTTP_1_1))
                     .connectTimeout(60, TimeUnit.SECONDS)
