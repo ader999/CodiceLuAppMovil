@@ -533,7 +533,8 @@ fun AplicacionAutenticada(
                         PantallaDetalleCircuito(
                             circuito = circuito,
                             puntosVisitados = puntosVisitados,
-                            alAlternarVisitado = { puntoId -> solicitarUbicacionYMarcar(puntoId) }
+                            alAlternarVisitado = { puntoId -> solicitarUbicacionYMarcar(puntoId) },
+                            paddingSuperior = paddingSuperior
                         )
                     } else {
                         pantallaActual = "circuits_and_poi"
@@ -543,7 +544,8 @@ fun AplicacionAutenticada(
                     ciudadSeleccionada?.let { ciudad ->
                         PantallaDetalleCiudad(
                             ciudad = ciudad,
-                            alRegresar = { pantallaActual = "main" }
+                            alRegresar = { pantallaActual = "main" },
+                            paddingSuperior = paddingSuperior
                         )
                     }
                 }
@@ -564,7 +566,8 @@ fun AplicacionAutenticada(
                     eventoSeleccionado?.let { evento ->
                         PantallaDetalleEvento(
                             evento = evento,
-                            viewModelEventos = viewModelEventos
+                            viewModelEventos = viewModelEventos,
+                            paddingSuperior = paddingSuperior
                         )
                     }
                 }
@@ -807,6 +810,7 @@ fun TarjetaPrincipal(
     alHacerClicEnCiudad: (Ciudad) -> Unit
 ) {
     val cadenas = LocalCadenas.current
+    var ciudadSeleccionadaEnMapa by remember { mutableStateOf<Ciudad?>(null) }
 
     Card(
         modifier = Modifier
@@ -820,30 +824,26 @@ fun TarjetaPrincipal(
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
-            // Área de mapa
+            // Área de mapa croquis de Nicaragua con ciudades creativas
             Box(
                 modifier = Modifier
-                    .weight(0.35f)
+                    .weight(0.40f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Map,
-                    contentDescription = null,
-                    tint = Celeste.copy(alpha = 0.3f),
-                    modifier = Modifier.fillMaxSize(0.8f)
-                )
-                Text(
-                    cadenas.nicaragua,
-                    color = AzulPetroleo.copy(alpha = 0.2f),
-                    fontWeight = FontWeight.Black,
-                    fontSize = 24.sp
+                CroquisNicaragua(
+                    ciudades = ciudades,
+                    ciudadSeleccionada = ciudadSeleccionadaEnMapa,
+                    alSeleccionarCiudad = { ciudadSeleccionadaEnMapa = it },
+                    alHacerClicEnCiudad = alHacerClicEnCiudad,
+                    alHacerClicEnPin = alHacerClicEnPin,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
             
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = GrisClaro)
             
-            Box(modifier = Modifier.weight(0.65f)) {
+            Box(modifier = Modifier.weight(0.60f)) {
                 if (estaCargando) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = GoldColor)
                 } else if (error != null) {
@@ -863,7 +863,10 @@ fun TarjetaPrincipal(
                             ElementoUbicacion(
                                 nombre = ciudad.nombre,
                                 alHacerClicEnPin = { alHacerClicEnPin(ciudad) },
-                                alHacerClicEnCiudad = { alHacerClicEnCiudad(ciudad) }
+                                alHacerClicEnCiudad = {
+                                    ciudadSeleccionadaEnMapa = ciudad
+                                    alHacerClicEnCiudad(ciudad)
+                                }
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = GrisClaro)
                         }

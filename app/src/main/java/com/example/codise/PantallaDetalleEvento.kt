@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -49,12 +50,14 @@ import java.util.Locale
 @Composable
 fun PantallaDetalleEvento(
     evento: Evento,
-    viewModelEventos: ViewModelEventos? = null
+    viewModelEventos: ViewModelEventos? = null,
+    paddingSuperior: Dp = 0.dp
 ) {
     val cadenas = LocalCadenas.current
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(top = paddingSuperior)
             .verticalScroll(rememberScrollState())
     ) {
         if (evento.imagen != null) {
