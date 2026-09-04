@@ -53,6 +53,7 @@ import com.example.codise.data.Usuario
 import com.example.codise.ui.theme.*
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
@@ -73,6 +74,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         setContent {
             Codice路Theme {
                 AplicacionPrincipal()
@@ -459,7 +463,9 @@ fun AplicacionAutenticada(
     ) { innerPadding ->
         val paddingSuperior = innerPadding.calculateTopPadding()
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
         ) {
             when (pantallaActual) {
                 "main" -> PantallaPrincipal(
@@ -944,111 +950,121 @@ fun BarraNavegacionInferior(
         close()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp)
-            .clip(formaTresMonticulos)
-            .background(AzulPetroleo)
-            .padding(bottom = 6.dp),
-        contentAlignment = Alignment.BottomCenter
+    Column(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .clip(formaTresMonticulos)
+                .background(AzulPetroleo)
+                .padding(bottom = 6.dp),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            val esPantallaPrincipal = pantallaActual == "main"
-            
-            // Botón Izquierdo: Eventos en la pantalla principal, botón de retroceso en todas las demás vistas
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        if (esPantallaPrincipal) {
-                            alSeleccionarPestana(2) // Pestaña de eventos (Lista)
-                        } else {
-                            alHacerClicEnAtras()
-                        }
-                    },
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (esPantallaPrincipal) {
-                        Icons.Default.Event
-                    } else {
-                        Icons.AutoMirrored.Filled.ArrowBack
-                    },
-                    contentDescription = if (esPantallaPrincipal) cadenas.eventos else cadenas.regresar,
-                    tint = if (esPantallaPrincipal) GoldColor.copy(alpha = 0.5f) else GoldColor,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-
-            // Botón Central: Inicio
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { alHacerClicEnInicio() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = cadenas.inicio,
-                    tint = GoldColor,
+                val esPantallaPrincipal = pantallaActual == "main"
+                
+                // Botón Izquierdo: Eventos en la pantalla principal, botón de retroceso en todas las demás vistas
+                Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .padding(bottom = 2.dp)
-                )
-            }
+                        .weight(1f)
+                        .clickable {
+                            if (esPantallaPrincipal) {
+                                alSeleccionarPestana(2) // Pestaña de eventos (Lista)
+                            } else {
+                                alHacerClicEnAtras()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (esPantallaPrincipal) {
+                            Icons.Default.Event
+                        } else {
+                            Icons.AutoMirrored.Filled.ArrowBack
+                        },
+                        contentDescription = if (esPantallaPrincipal) cadenas.eventos else cadenas.regresar,
+                        tint = if (esPantallaPrincipal) GoldColor.copy(alpha = 0.5f) else GoldColor,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
 
-            // Botón Derecho: Alternar vista en eventos / circuitos y puntos de interés, o Publicaciones / Agregar Publicación / Formulario Perfil
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        when (pantallaActual) {
-                            "publications" -> {
-                                alHacerClicEnSubirPublicacion()
+                // Botón Central: Inicio
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { alHacerClicEnInicio() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = cadenas.inicio,
+                        tint = GoldColor,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .padding(bottom = 2.dp)
+                    )
+                }
+
+                // Botón Derecho: Alternar vista en eventos / circuitos y puntos de interés, o Publicaciones / Agregar Publicación / Formulario Perfil
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            when (pantallaActual) {
+                                "publications" -> {
+                                    alHacerClicEnSubirPublicacion()
+                                }
+                                "events" -> {
+                                    // Alternar entre Lista (2) y Calendario (3)
+                                    alSeleccionarPestana(if (pestanaSeleccionada == 2) 3 else 2)
+                                }
+                                "circuits_and_poi" -> {
+                                    // Alternar entre Circuitos (0) y Puntos de Interés (1)
+                                    alSeleccionarPestana(if (pestanaSeleccionada == 0) 1 else 0)
+                                }
+                                "profile" -> {
+                                    alAlternarFormularioPerfil()
+                                }
+                                else -> {
+                                    alHacerClicEnExplorar()
+                                }
                             }
-                            "events" -> {
-                                // Alternar entre Lista (2) y Calendario (3)
-                                alSeleccionarPestana(if (pestanaSeleccionada == 2) 3 else 2)
-                            }
-                            "circuits_and_poi" -> {
-                                // Alternar entre Circuitos (0) y Puntos de Interés (1)
-                                alSeleccionarPestana(if (pestanaSeleccionada == 0) 1 else 0)
-                            }
-                            "profile" -> {
-                                alAlternarFormularioPerfil()
-                            }
-                            else -> {
-                                alHacerClicEnExplorar()
-                            }
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = when (pantallaActual) {
-                        "publications" -> Icons.Default.AddPhotoAlternate
-                        "events" -> if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
-                        "circuits_and_poi" -> if (pestanaSeleccionada == 0) Icons.Default.LocationOn else Icons.Default.Map
-                        "profile" -> if (mostrarFormularioPerfil) Icons.Default.Person else Icons.Default.EditNote
-                        else -> Icons.Default.PhotoLibrary
-                    },
-                    contentDescription = when (pantallaActual) {
-                        "publications" -> cadenas.nuevaPublicacion
-                        "events" -> cadenas.eventos
-                        "circuits_and_poi" -> if (pestanaSeleccionada == 0) cadenas.puntosDeInteres else cadenas.circuitos
-                        "profile" -> if (mostrarFormularioPerfil) cadenas.perfil else cadenas.editarPerfil
-                        else -> cadenas.publicaciones
-                    },
-                    tint = if (pantallaActual in listOf("publications", "circuits_and_poi", "profile")) GoldColor else GoldColor.copy(alpha = 0.5f),
-                    modifier = Modifier.size(28.dp)
-                )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when (pantallaActual) {
+                            "publications" -> Icons.Default.AddPhotoAlternate
+                            "events" -> if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
+                            "circuits_and_poi" -> if (pestanaSeleccionada == 0) Icons.Default.LocationOn else Icons.Default.Map
+                            "profile" -> if (mostrarFormularioPerfil) Icons.Default.Person else Icons.Default.EditNote
+                            else -> Icons.Default.PhotoLibrary
+                        },
+                        contentDescription = when (pantallaActual) {
+                            "publications" -> cadenas.nuevaPublicacion
+                            "events" -> cadenas.eventos
+                            "circuits_and_poi" -> if (pestanaSeleccionada == 0) cadenas.puntosDeInteres else cadenas.circuitos
+                            "profile" -> if (mostrarFormularioPerfil) cadenas.perfil else cadenas.editarPerfil
+                            else -> cadenas.publicaciones
+                        },
+                        tint = if (pantallaActual in listOf("publications", "circuits_and_poi", "profile")) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
         }
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsBottomHeight(WindowInsets.navigationBars)
+                .background(AzulPetroleo)
+        )
     }
 }
 

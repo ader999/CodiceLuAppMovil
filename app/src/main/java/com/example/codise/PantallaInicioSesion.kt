@@ -56,6 +56,7 @@ fun PantallaLogin(
         modifier = Modifier
             .fillMaxSize()
             .background(Celeste)
+            .safeDrawingPadding()
             .padding(24.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
