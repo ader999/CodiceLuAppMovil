@@ -10,12 +10,16 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
+import com.example.codise.utils.aUrlCompleta
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -88,6 +92,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
     val clienteUbicacion = remember { LocationServices.getFusedLocationProviderClient(contexto) }
 
     var pantallaActual by remember { mutableStateOf("main") }
+    var mostrarFormularioPerfil by remember { mutableStateOf(false) }
     var eventoSeleccionado by remember { mutableStateOf<Evento?>(null) }
     val ciudadSeleccionada = viewModelPrincipal.ciudadSeleccionada
     var pestanaSeleccionada by remember { mutableIntStateOf(0) }
@@ -213,8 +218,15 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
             }
             BarraSuperior(
                 titulo = tituloBarraSuperior,
-                alHacerClicEnPerfil = { pantallaActual = "profile" },
-                alHacerClicEnLogo = { pantallaActual = "main" },
+                fotoPerfil = usuario.fotoPerfil,
+                alHacerClicEnPerfil = {
+                    pantallaActual = "profile"
+                    mostrarFormularioPerfil = false
+                },
+                alHacerClicEnLogo = {
+                    pantallaActual = "main"
+                    mostrarFormularioPerfil = false
+                },
                 alHacerClicEnAsistente = { mostrarDialogoAsistente = true }
             )
         },
@@ -222,15 +234,24 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
             BarraNavegacionInferior(
                 pantallaActual = pantallaActual,
                 pestanaSeleccionada = pestanaSeleccionada,
-                alHacerClicEnInicio = { pantallaActual = "main" },
+                mostrarFormularioPerfil = mostrarFormularioPerfil,
+                alHacerClicEnInicio = {
+                    pantallaActual = "main"
+                    mostrarFormularioPerfil = false
+                },
                 alSeleccionarPestana = { 
                     pestanaSeleccionada = it
                     if (it == 2 || it == 3) {
                         pantallaActual = "events"
                     }
+                    mostrarFormularioPerfil = false
                 },
-                alHacerClicEnExplorar = { pantallaActual = "publications" },
+                alHacerClicEnExplorar = {
+                    pantallaActual = "publications"
+                    mostrarFormularioPerfil = false
+                },
                 alHacerClicEnSubirPublicacion = { pantallaActual = "upload_publication" },
+                alAlternarFormularioPerfil = { mostrarFormularioPerfil = !mostrarFormularioPerfil },
                 alHacerClicEnAtras = {
                     when (pantallaActual) {
                         "circuit_detail" -> pantallaActual = "circuits_and_poi"
@@ -245,7 +266,13 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                         "events" -> pantallaActual = "main"
                         "event_detail" -> pantallaActual = "events"
                         "publications" -> pantallaActual = "main"
-                        "profile" -> pantallaActual = "main"
+                        "profile" -> {
+                            if (mostrarFormularioPerfil) {
+                                mostrarFormularioPerfil = false
+                            } else {
+                                pantallaActual = "main"
+                            }
+                        }
                         "upload_publication" -> {
                             pantallaActual = "publications"
                             viewModelPublicaciones.reiniciarEstadoSubida()
@@ -285,15 +312,26 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                     ContenidoPerfil(
                         usuario = usuario,
                         token = token,
-                        alVolver = { pantallaActual = "main" },
-                        alGuardar = { usuarioActualizado: Usuario ->
-                            viewModelPerfil.actualizarPerfil(token, usuarioActualizado)
+                        alVolver = {
+                            if (mostrarFormularioPerfil) {
+                                mostrarFormularioPerfil = false
+                            } else {
+                                pantallaActual = "main"
+                            }
+                        },
+                        alGuardar = { usuarioActualizado, uriFoto ->
+                            viewModelPerfil.actualizarPerfil(token, usuarioActualizado, uriFoto)
+                        },
+                        alCambiarFoto = { uri ->
+                            viewModelPerfil.actualizarFotoPerfil(token, uri)
                         },
                         estadoUiPerfil = estadoUiPerfil,
                         estadoUiEmpresa = estadoUiEmpresa,
                         alRegistrarEmpresa = { t, emp -> viewModelPerfil.registrarEmpresa(t, emp) },
                         ciudades = ciudades,
                         alCerrarSesion = alCerrarSesion,
+                        mostrarFormulario = mostrarFormularioPerfil,
+                        alAlternarFormulario = { mostrarFormularioPerfil = !mostrarFormularioPerfil },
                         paddingSuperior = paddingSuperior
                     )
                 }
@@ -446,6 +484,7 @@ fun PantallaPrincipal(
 @Composable
 fun BarraSuperior(
     titulo: String? = null,
+    fotoPerfil: String? = null,
     alHacerClicEnPerfil: () -> Unit,
     alHacerClicEnLogo: () -> Unit,
     alHacerClicEnAsistente: () -> Unit = {}
@@ -556,14 +595,28 @@ fun BarraSuperior(
                     .clickable { alHacerClicEnPerfil() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Perfil",
-                    tint = GoldColor,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .offset(y = 3.0.dp)
-                )
+                if (!fotoPerfil.isNullOrBlank()) {
+                    AsyncImage(
+                        model = fotoPerfil.aUrlCompleta(),
+                        contentDescription = "Perfil",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .offset(y = 3.0.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, GoldColor, CircleShape),
+                        contentScale = ContentScale.Crop,
+                        error = androidx.compose.ui.graphics.painter.ColorPainter(GoldColor.copy(alpha = 0.3f))
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Perfil",
+                        tint = GoldColor,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .offset(y = 3.0.dp)
+                    )
+                }
             }
         }
     }
@@ -693,10 +746,12 @@ fun ElementoUbicacion(nombre: String, alHacerClicEnPin: () -> Unit, alHacerClicE
 fun BarraNavegacionInferior(
     pantallaActual: String,
     pestanaSeleccionada: Int,
+    mostrarFormularioPerfil: Boolean = false,
     alHacerClicEnInicio: () -> Unit,
     alSeleccionarPestana: (Int) -> Unit,
     alHacerClicEnExplorar: () -> Unit = {},
     alHacerClicEnSubirPublicacion: () -> Unit = {},
+    alAlternarFormularioPerfil: () -> Unit = {},
     alHacerClicEnAtras: () -> Unit = {}
 ) {
     val formaTresMonticulos = GenericShape { size, _ ->
@@ -774,7 +829,7 @@ fun BarraNavegacionInferior(
                 )
             }
 
-            // Botón Derecho: Alternar vista en eventos / circuitos y puntos de interés, o Publicaciones / Agregar Publicación
+            // Botón Derecho: Alternar vista en eventos / circuitos y puntos de interés, o Publicaciones / Agregar Publicación / Formulario Perfil
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -791,6 +846,9 @@ fun BarraNavegacionInferior(
                                 // Alternar entre Circuitos (0) y Puntos de Interés (1)
                                 alSeleccionarPestana(if (pestanaSeleccionada == 0) 1 else 0)
                             }
+                            "profile" -> {
+                                alAlternarFormularioPerfil()
+                            }
                             else -> {
                                 alHacerClicEnExplorar()
                             }
@@ -803,15 +861,17 @@ fun BarraNavegacionInferior(
                         "publications" -> Icons.Default.AddPhotoAlternate
                         "events" -> if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
                         "circuits_and_poi" -> if (pestanaSeleccionada == 0) Icons.Default.LocationOn else Icons.Default.Map
+                        "profile" -> if (mostrarFormularioPerfil) Icons.Default.Person else Icons.Default.EditNote
                         else -> Icons.Default.PhotoLibrary
                     },
                     contentDescription = when (pantallaActual) {
                         "publications" -> "Nueva Publicación"
                         "events" -> "Alternar vista"
                         "circuits_and_poi" -> if (pestanaSeleccionada == 0) "Puntos de Interés" else "Circuitos"
+                        "profile" -> if (mostrarFormularioPerfil) "Ver Perfil" else "Editar Perfil"
                         else -> "Publicaciones"
                     },
-                    tint = if (pantallaActual == "publications" || pantallaActual == "circuits_and_poi") GoldColor else GoldColor.copy(alpha = 0.5f),
+                    tint = if (pantallaActual in listOf("publications", "circuits_and_poi", "profile")) GoldColor else GoldColor.copy(alpha = 0.5f),
                     modifier = Modifier.size(28.dp)
                 )
             }
