@@ -157,6 +157,12 @@ interface ServicioApi {
         @Body solicitud: SolicitudComentario
     ): Response<ComentarioPublicacion>
 
+    @POST("api/asistente/chat/")
+    suspend fun enviarMensajeAsistente(
+        @Header("Authorization") token: String? = null,
+        @Body solicitud: SolicitudAsistente
+    ): Response<RespuestaAsistente>
+
     companion object {
         const val URL_BASE = "https://codisecore-production.up.railway.app/"
         private var instancia: ServicioApi? = null
@@ -218,4 +224,34 @@ data class RespuestaLike(
     val message: String,
     val ha_dado_like: Boolean,
     val total_likes: Int
+)
+
+data class UbicacionGps(
+    val latitud: Double,
+    val longitud: Double
+)
+
+data class ChatHistoryItem(
+    val role: String,
+    val parts: List<String>
+)
+
+data class SolicitudAsistente(
+    val mensaje: String,
+    val idioma: String = "es",
+    val ubicacion: UbicacionGps? = null,
+    val historial: List<ChatHistoryItem>? = null
+)
+
+data class HerramientaUtilizada(
+    val nombre: String? = null,
+    val argumentos: Map<String, Any?>? = null
+)
+
+data class RespuestaAsistente(
+    val nombre_asistente: String? = null,
+    val respuesta: String,
+    val herramientas_utilizadas: List<HerramientaUtilizada>? = null,
+    val modelo_utilizado: String? = null,
+    val idioma: String? = null
 )

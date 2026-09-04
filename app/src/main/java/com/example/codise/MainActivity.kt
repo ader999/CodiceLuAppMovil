@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -50,10 +51,22 @@ import com.example.codise.data.IdiomaApp
 import com.example.codise.data.ServicioApi
 import com.example.codise.data.Usuario
 import com.example.codise.ui.theme.*
+import android.app.Activity
+import android.content.Intent
+import android.os.Looper
+import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.result.IntentSenderRequest
 import com.example.codise.utils.CadenasIdiomas
 import com.example.codise.utils.LocalCadenas
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.Priority
+import com.google.android.gms.location.SettingsClient
 import com.google.android.gms.tasks.CancellationTokenSource
 
 class MainActivity : ComponentActivity() {
@@ -120,6 +133,7 @@ fun AplicacionAutenticada(
     val viewModelPrincipal: ViewModelPrincipal = viewModel()
     val viewModelEventos: ViewModelEventos = viewModel()
     val viewModelPublicaciones: ViewModelPublicaciones = viewModel()
+    val viewModelAsistente: ViewModelAsistente = viewModel()
     val idsPuntosVisitados by viewModelPrincipal.idsPuntosVisitados.collectAsState()
     val contexto = LocalContext.current
     val clienteUbicacion = remember { LocationServices.getFusedLocationProviderClient(contexto) }
@@ -157,6 +171,137 @@ fun AplicacionAutenticada(
             idPuntoParaMarcarComoVisitado?.let { viewModelPrincipal.alternarVisitado(it) }
         }
         idPuntoParaMarcarComoVisitado = null
+    }
+
+    val cadenas = LocalCadenas.current
+
+    // Obtener ubicación GPS para el Asistente
+    val obtenerUbicacionActualAsistente = {
+        Toast.makeText(contexto, cadenas.asistenteActivandoGps, Toast.LENGTH_SHORT).show()
+        try {
+            clienteUbicacion.getCurrentLocation(
+                Priority.PRIORITY_HIGH_ACCURACY,
+                CancellationTokenSource().token
+            ).addOnSuccessListener { ubicacion ->
+                if (ubicacion != null) {
+                    viewModelAsistente.actualizarUbicacion(ubicacion.latitude, ubicacion.longitude)
+                    Toast.makeText(contexto, cadenas.asistenteUbicacionActiva, Toast.LENGTH_SHORT).show()
+                } else {
+                    clienteUbicacion.lastLocation.addOnSuccessListener { ultimaUbicacion ->
+                        if (ultimaUbicacion != null) {
+                            viewModelAsistente.actualizarUbicacion(ultimaUbicacion.latitude, ultimaUbicacion.longitude)
+                            Toast.makeText(contexto, cadenas.asistenteUbicacionActiva, Toast.LENGTH_SHORT).show()
+                        } else {
+                            val singleRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
+                                .setMaxUpdates(1)
+                                .build()
+                            val callback = object : LocationCallback() {
+                                override fun onLocationResult(result: LocationResult) {
+                                    val loc = result.lastLocation
+                                    if (loc != null) {
+                                        viewModelAsistente.actualizarUbicacion(loc.latitude, loc.longitude)
+                                        Toast.makeText(contexto, cadenas.asistenteUbicacionActiva, Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(contexto, cadenas.asistenteGpsNoActivado, Toast.LENGTH_SHORT).show()
+                                    }
+                                    clienteUbicacion.removeLocationUpdates(this)
+                                }
+                            }
+                            clienteUbicacion.requestLocationUpdates(singleRequest, callback, Looper.getMainLooper())
+                        }
+                    }.addOnFailureListener {
+                        Toast.makeText(contexto, cadenas.asistenteGpsNoActivado, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }.addOnFailureListener {
+                Toast.makeText(contexto, cadenas.asistenteGpsNoActivado, Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: SecurityException) {
+            Toast.makeText(contexto, cadenas.asistentePermisoUbicacionRequerido, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Lanzador para solicitar al usuario que encienda el GPS del dispositivo mediante el diálogo de Google Play Services
+    val lanzadorAjustesGpsAsistente = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { resultado ->
+        if (resultado.resultCode == Activity.RESULT_OK) {
+            obtenerUbicacionActualAsistente()
+        } else {
+            Toast.makeText(contexto, cadenas.asistenteGpsNoActivado, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Verificar si el hardware/servicio GPS del dispositivo está encendido
+    val verificarAjustesGpsYObtenerUbicacion = {
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
+            .setMinUpdateIntervalMillis(5000)
+            .build()
+        val builder = LocationSettingsRequest.Builder()
+            .addLocationRequest(locationRequest)
+            .setAlwaysShow(true)
+
+        val client: SettingsClient = LocationServices.getSettingsClient(contexto)
+        client.checkLocationSettings(builder.build())
+            .addOnSuccessListener {
+                obtenerUbicacionActualAsistente()
+            }
+            .addOnFailureListener { excepcion ->
+                if (excepcion is ResolvableApiException) {
+                    try {
+                        val intentSenderRequest = IntentSenderRequest.Builder(excepcion.resolution).build()
+                        lanzadorAjustesGpsAsistente.launch(intentSenderRequest)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                } else {
+                    try {
+                        val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                        contexto.startActivity(intent)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+    }
+
+    val lanzadorPermisosUbicacionAsistente = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permisos ->
+        val concedido = permisos[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permisos[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (concedido) {
+            verificarAjustesGpsYObtenerUbicacion()
+        } else {
+            Toast.makeText(contexto, cadenas.asistentePermisoUbicacionRequerido, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val solicitarUbicacionAsistente = {
+        if (viewModelAsistente.ubicacionGps.value != null) {
+            // Alternar: si ya está activa, se desactiva
+            viewModelAsistente.limpiarUbicacion()
+            Toast.makeText(contexto, cadenas.asistenteUbicacionDesactivada, Toast.LENGTH_SHORT).show()
+        } else {
+            val tienePermiso = ContextCompat.checkSelfPermission(
+                contexto,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+                contexto,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (tienePermiso) {
+                verificarAjustesGpsYObtenerUbicacion()
+            } else {
+                lanzadorPermisosUbicacionAsistente.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            }
+        }
     }
 
     val solicitarUbicacionYMarcar = { puntoId: Int ->
@@ -208,9 +353,12 @@ fun AplicacionAutenticada(
         }
     }
 
-    val cadenas = LocalCadenas.current
-    var mostrarDialogoAsistente by remember { mutableStateOf(false) }
     var mostrarDialogoIdioma by remember { mutableStateOf(false) }
+
+    // Interceptar botón atrás del sistema cuando se esté en el asistente
+    BackHandler(enabled = pantallaActual == "assistant") {
+        pantallaActual = "main"
+    }
 
     val cambiarIdiomaApp: (IdiomaApp) -> Unit = { nuevoIdioma ->
         gestorIdioma.cambiarIdioma(nuevoIdioma)
@@ -218,6 +366,8 @@ fun AplicacionAutenticada(
         viewModelPrincipal.obtenerCiudades(forzar = true)
         viewModelEventos.obtenerEventos()
         viewModelPublicaciones.obtenerPublicaciones()
+        val nuevasCadenas = CadenasIdiomas.obtener(nuevoIdioma)
+        viewModelAsistente.inicializarBienvenida(nuevasCadenas.asistenteMensaje, nuevoIdioma.codigo)
     }
 
     if (mostrarDialogoIdioma) {
@@ -228,47 +378,9 @@ fun AplicacionAutenticada(
         )
     }
 
-    if (mostrarDialogoAsistente) {
-        AlertDialog(
-            onDismissRequest = { mostrarDialogoAsistente = false },
-            icon = {
-                Image(
-                    painter = painterResource(id = R.drawable.iconasistente),
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    contentScale = ContentScale.Fit
-                )
-            },
-            title = {
-                Text(
-                    text = cadenas.asistenteTitulo,
-                    fontWeight = FontWeight.Bold,
-                    color = AzulPetroleo
-                )
-            },
-            text = {
-                Text(
-                    text = cadenas.asistenteMensaje,
-                    color = AzulPetroleo.copy(alpha = 0.8f)
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { mostrarDialogoAsistente = false }) {
-                    Text(cadenas.entendido, color = GoldColor, fontWeight = FontWeight.Bold)
-                }
-            },
-            containerColor = BlancoBase,
-            shape = RoundedCornerShape(20.dp)
-        )
-    }
-
     Scaffold(
         topBar = {
-            val tituloBarraSuperior = when (pantallaActual) {
-                else -> null
-            }
             BarraSuperior(
-                titulo = tituloBarraSuperior,
                 fotoPerfil = usuarioActual.fotoPerfil,
                 idiomaActual = idiomaActual,
                 alHacerClicEnPerfil = {
@@ -279,7 +391,10 @@ fun AplicacionAutenticada(
                     pantallaActual = "main"
                     mostrarFormularioPerfil = false
                 },
-                alHacerClicEnAsistente = { mostrarDialogoAsistente = true },
+                alHacerClicEnAsistente = {
+                    pantallaActual = "assistant"
+                    mostrarFormularioPerfil = false
+                },
                 alHacerClicEnIdioma = { mostrarDialogoIdioma = true }
             )
         },
@@ -334,6 +449,7 @@ fun AplicacionAutenticada(
                             pantallaActual = "events"
                             viewModelEventos.reiniciarEstadoSubida()
                         }
+                        "assistant" -> pantallaActual = "main"
                         else -> pantallaActual = "main"
                     }
                 }
@@ -497,6 +613,14 @@ fun AplicacionAutenticada(
                         paddingSuperior = paddingSuperior
                     )
                 }
+                "assistant" -> {
+                    PantallaAsistente(
+                        viewModel = viewModelAsistente,
+                        idiomaActual = idiomaActual,
+                        paddingSuperior = paddingSuperior,
+                        alSolicitarUbicacion = { solicitarUbicacionAsistente() }
+                    )
+                }
             }
         }
     }
@@ -539,7 +663,6 @@ fun PantallaPrincipal(
 
 @Composable
 fun BarraSuperior(
-    titulo: String? = null,
     fotoPerfil: String? = null,
     idiomaActual: IdiomaApp = IdiomaApp.ESPANOL,
     alHacerClicEnPerfil: () -> Unit,
@@ -590,7 +713,7 @@ fun BarraSuperior(
                 .height(40.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Lado Izquierdo: Logo (y título opcional)
+            // Lado Izquierdo: Logo
             Box(
                 modifier = Modifier
                     .weight(1.0f)
@@ -598,34 +721,12 @@ fun BarraSuperior(
                     .clickable { alHacerClicEnLogo() },
                 contentAlignment = Alignment.CenterStart
             ) {
-                if (titulo != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_logo),
-                            contentDescription = "Codice Logo",
-                            modifier = Modifier.height(28.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                        Text(
-                            text = titulo,
-                            color = GoldColor,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 8.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                } else {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_logo),
-                        contentDescription = "Codice Logo",
-                        modifier = Modifier.height(34.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                }
+                Image(
+                    painter = painterResource(id = R.drawable.ic_logo),
+                    contentDescription = "Codice Logo",
+                    modifier = Modifier.height(34.dp),
+                    contentScale = ContentScale.Fit
+                )
             }
             
             // Selector de Idioma (Español, English, 中文)
