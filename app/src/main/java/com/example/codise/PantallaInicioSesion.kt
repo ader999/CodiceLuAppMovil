@@ -1,5 +1,6 @@
 package com.example.codise
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -25,6 +27,7 @@ import com.example.codise.ui.theme.*
 
 @Composable
 fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
+    val contexto = LocalContext.current
     var modoRegistro by remember { mutableStateOf(false) }
     val estadoUi by viewModel.estadoUi.collectAsState()
 
@@ -208,6 +211,58 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                         color = androidx.compose.ui.graphics.Color.Red,
                         modifier = Modifier.padding(top = 8.dp)
                     )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        color = GrisClaro.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        text = "  o continúa con  ",
+                        color = AzulPetroleo.copy(alpha = 0.6f),
+                        fontSize = 13.sp
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        color = GrisClaro.copy(alpha = 0.5f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = { viewModel.iniciarSesionConGoogle(contexto) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, GrisClaro),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = BlancoBase),
+                    enabled = estadoUi !is EstadoUiLogin.Cargando
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_google),
+                            contentDescription = "Google",
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Continuar con Google",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = AzulPetroleo
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

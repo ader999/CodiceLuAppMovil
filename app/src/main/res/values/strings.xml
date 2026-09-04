@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Codice路</string>
+    <string name="google_web_client_id" translatable="false">397372555682-88enhi6u9k8ibu98j58p5df30usp872v.apps.googleusercontent.com</string>
 </resources>

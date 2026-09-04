@@ -1,13 +1,17 @@
 package com.example.codise
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.codise.data.ServicioApi
 import com.example.codise.data.RespuestaAutenticacion
 import com.example.codise.data.SolicitudLogin
+import com.example.codise.data.SolicitudAuthGoogle
 import com.example.codise.data.AdministradorSesion
 import com.example.codise.data.Usuario
+import com.example.codise.utils.AutenticadorGoogle
+import com.example.codise.utils.ResultadoGoogleAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -63,6 +67,35 @@ class ViewModelLogin(aplicacion: Application) : AndroidViewModel(aplicacion) {
                 }
             } catch (e: Exception) {
                 _estadoUi.value = EstadoUiLogin.Error(e.message ?: "Error desconocido")
+            }
+        }
+    }
+
+    fun iniciarSesionConGoogle(contexto: Context) {
+        viewModelScope.launch {
+            _estadoUi.value = EstadoUiLogin.Cargando
+            val autenticador = AutenticadorGoogle(contexto)
+            when (val resultado = autenticador.iniciarSesion()) {
+                is ResultadoGoogleAuth.Exito -> {
+                    try {
+                        val respuesta = servicioApi.autenticarConGoogle(SolicitudAuthGoogle(idToken = resultado.idToken))
+                        if (respuesta.isSuccessful) {
+                            val respuestaAuth = respuesta.body()!!
+                            administradorSesion.guardarSesion(respuestaAuth)
+                            _estadoUi.value = EstadoUiLogin.Exito(respuestaAuth)
+                        } else {
+                            _estadoUi.value = EstadoUiLogin.Error("Error: ${respuesta.code()} - ${respuesta.message()}")
+                        }
+                    } catch (e: Exception) {
+                        _estadoUi.value = EstadoUiLogin.Error(e.localizedMessage ?: "Error al conectar con el servidor")
+                    }
+                }
+                is ResultadoGoogleAuth.Error -> {
+                    _estadoUi.value = EstadoUiLogin.Error(resultado.mensaje)
+                }
+                is ResultadoGoogleAuth.Cancelado -> {
+                    _estadoUi.value = EstadoUiLogin.Inactivo
+                }
             }
         }
     }
