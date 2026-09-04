@@ -28,6 +28,25 @@ interface ServicioApi {
         @Body usuario: Usuario
     ): Response<Usuario>
 
+    @Multipart
+    @PATCH("api/auth/me/")
+    suspend fun actualizarFotoPerfil(
+        @Header("Authorization") token: String,
+        @Part foto_perfil: MultipartBody.Part
+    ): Response<Usuario>
+
+    @Multipart
+    @PATCH("api/auth/me/")
+    suspend fun actualizarPerfilMultipart(
+        @Header("Authorization") token: String,
+        @Part("first_name") nombre: RequestBody? = null,
+        @Part("last_name") apellido: RequestBody? = null,
+        @Part("username") nombreUsuario: RequestBody? = null,
+        @Part("email") correoElectronico: RequestBody? = null,
+        @Part("telefono") telefono: RequestBody? = null,
+        @Part foto_perfil: MultipartBody.Part? = null
+    ): Response<Usuario>
+
     @GET("api/ciudades/")
     suspend fun obtenerCiudades(): Response<List<Ciudad>>
 

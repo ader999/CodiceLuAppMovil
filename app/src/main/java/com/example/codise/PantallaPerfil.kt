@@ -1,42 +1,54 @@
 package com.example.codise
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.codise.data.Empresa
+import coil.compose.AsyncImage
 import com.example.codise.data.Ciudad
+import com.example.codise.data.Empresa
 import com.example.codise.data.Usuario
 import com.example.codise.ui.theme.*
+import com.example.codise.utils.aUrlCompleta
 
 @Composable
 fun ContenidoPerfil(
     usuario: Usuario,
     token: String,
     alVolver: () -> Unit,
-    alGuardar: (Usuario) -> Unit,
+    alGuardar: (Usuario, Uri?) -> Unit,
+    alCambiarFoto: (Uri) -> Unit = {},
     estadoUiPerfil: EstadoUiPerfil,
     estadoUiEmpresa: EstadoUiEmpresa,
     alRegistrarEmpresa: (String, Empresa) -> Unit,
     ciudades: List<Ciudad>,
     alCerrarSesion: () -> Unit,
+    mostrarFormulario: Boolean = false,
+    alAlternarFormulario: () -> Unit = {},
     paddingSuperior: Dp = 0.dp
 ) {
     var nombre by remember(usuario) { mutableStateOf(usuario.nombre.orEmpty()) }
@@ -44,6 +56,18 @@ fun ContenidoPerfil(
     var nombreUsuario by remember(usuario) { mutableStateOf(usuario.nombreUsuario.orEmpty()) }
     var correo by remember(usuario) { mutableStateOf(usuario.correoElectronico.orEmpty()) }
     var telefono by remember(usuario) { mutableStateOf(usuario.telefono.orEmpty()) }
+    var uriFotoSeleccionada by remember { mutableStateOf<Uri?>(null) }
+
+    val lanzadorFoto = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            uriFotoSeleccionada = uri
+            if (!mostrarFormulario) {
+                alCambiarFoto(uri)
+            }
+        }
+    }
 
     LaunchedEffect(usuario) {
         nombre = usuario.nombre.orEmpty()
@@ -54,6 +78,7 @@ fun ContenidoPerfil(
     }
 
     var mostrarFormularioEmpresa by remember { mutableStateOf(false) }
+    val estaCargandoPerfil = estadoUiPerfil is EstadoUiPerfil.Cargando
 
     Column(
         modifier = Modifier
@@ -62,140 +87,395 @@ fun ContenidoPerfil(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Icono de perfil / Marcador de posición de imagen
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .clip(RoundedCornerShape(50.dp))
-                .background(AzulPetroleo)
-                .padding(10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = GoldColor,
-                modifier = Modifier.size(60.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = BlancoBase),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                CampoTextoPerfil(etiqueta = "Nombre", valor = nombre, alCambiarValor = { nombre = it })
-                CampoTextoPerfil(etiqueta = "Apellido", valor = apellido, alCambiarValor = { apellido = it })
-                CampoTextoPerfil(etiqueta = "Usuario", valor = nombreUsuario, alCambiarValor = { nombreUsuario = it })
-                CampoTextoPerfil(etiqueta = "Correo Electrónico", valor = correo, alCambiarValor = { correo = it })
-                CampoTextoPerfil(etiqueta = "Teléfono", valor = telefono, alCambiarValor = { telefono = it })
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        if (estadoUiPerfil is EstadoUiPerfil.Error) {
-            Text(
-                text = estadoUiPerfil.mensaje,
-                color = Color.Red,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        if (estadoUiPerfil is EstadoUiPerfil.Exito) {
-            Text(
-                text = "¡Perfil actualizado con éxito!",
-                color = Color(0xFF2E7D32),
-                modifier = Modifier.padding(bottom = 8.dp),
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Button(
-            onClick = {
-                val usuarioActualizado = usuario.copy(
-                    nombre = nombre,
-                    apellido = apellido,
-                    nombreUsuario = nombreUsuario,
-                    correoElectronico = correo,
-                    telefono = telefono
-                )
-                alGuardar(usuarioActualizado)
+        // Icono de perfil con foto de usuario y opción para cambiarla
+        IconoPerfilUsuario(
+            fotoPerfil = usuario.fotoPerfil,
+            uriFotoLocal = uriFotoSeleccionada,
+            alHacerClicEnCambiarFoto = {
+                lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
-            shape = RoundedCornerShape(12.dp),
-            enabled = estadoUiPerfil !is EstadoUiPerfil.Cargando
-        ) {
-            if (estadoUiPerfil is EstadoUiPerfil.Cargando) {
-                CircularProgressIndicator(color = GoldColor, modifier = Modifier.size(24.dp))
-            } else {
-                Text("Guardar Cambios", color = GoldColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            estaCargando = estaCargandoPerfil,
+            tamano = if (mostrarFormulario) 100.dp else 110.dp
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Toca para cambiar foto",
+            color = AzulPetroleo.copy(alpha = 0.7f),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clickable {
+                lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedButton(
-            onClick = alCerrarSesion,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Cerrar Sesión", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        }
-
-        if (!usuario.esProtagonista && !mostrarFormularioEmpresa) {
-            Spacer(modifier = Modifier.height(32.dp))
-            HorizontalDivider(color = GrisClaro.copy(alpha = 0.5f))
-            Spacer(modifier = Modifier.height(24.dp))
-            
+        if (mostrarFormulario) {
+            // VISTA FORMULARIO DE EDICIÓN
             Text(
-                "¿Eres dueño de un negocio?",
+                text = "Editar Perfil",
                 color = AzulPetroleo,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
-            Text(
-                "Regístrate como protagonista para publicar tus eventos y atraer más visitantes.",
-                color = NegroPuro.copy(alpha = 0.7f),
-                fontSize = 14.sp,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-            
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = BlancoBase),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CampoTextoPerfil(etiqueta = "Nombre", valor = nombre, alCambiarValor = { nombre = it })
+                    CampoTextoPerfil(etiqueta = "Apellido", valor = apellido, alCambiarValor = { apellido = it })
+                    CampoTextoPerfil(etiqueta = "Usuario", valor = nombreUsuario, alCambiarValor = { nombreUsuario = it })
+                    CampoTextoPerfil(etiqueta = "Correo Electrónico", valor = correo, alCambiarValor = { correo = it })
+                    CampoTextoPerfil(etiqueta = "Teléfono", valor = telefono, alCambiarValor = { telefono = it })
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (estadoUiPerfil is EstadoUiPerfil.Error) {
+                Text(
+                    text = estadoUiPerfil.mensaje,
+                    color = Color.Red,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            if (estadoUiPerfil is EstadoUiPerfil.Exito) {
+                Text(
+                    text = "¡Perfil actualizado con éxito!",
+                    color = Color(0xFF2E7D32),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
             Button(
-                onClick = { mostrarFormularioEmpresa = true },
+                onClick = {
+                    val usuarioActualizado = usuario.copy(
+                        nombre = nombre,
+                        apellido = apellido,
+                        nombreUsuario = nombreUsuario,
+                        correoElectronico = correo,
+                        telefono = telefono
+                    )
+                    alGuardar(usuarioActualizado, uriFotoSeleccionada)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = GoldColor),
+                colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !estaCargandoPerfil
+            ) {
+                if (estaCargandoPerfil) {
+                    CircularProgressIndicator(color = GoldColor, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Guardar Cambios", color = GoldColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = alAlternarFormulario,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AzulPetroleo),
+                border = androidx.compose.foundation.BorderStroke(1.dp, AzulPetroleo),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Business, contentDescription = null, tint = AzulPetroleo)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Convertirse en Protagonista", color = AzulPetroleo, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Cancelar", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+        } else {
+            // VISTA INFORMACIÓN DE PERFIL (VISTA PRINCIPAL)
+            val nombreCompleto = "${usuario.nombre.orEmpty()} ${usuario.apellido.orEmpty()}".trim()
+            Text(
+                text = nombreCompleto.ifBlank { usuario.nombreUsuario.orEmpty() },
+                color = AzulPetroleo,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "@${usuario.nombreUsuario.orEmpty()}",
+                color = NegroPuro.copy(alpha = 0.6f),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Etiquetas de rol
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (usuario.esStaff) {
+                    InsigniaRol(texto = "Staff", colorFondo = AzulPetroleo, colorTexto = GoldColor)
+                }
+                if (usuario.esProtagonista) {
+                    InsigniaRol(texto = "Protagonista", colorFondo = GoldColor, colorTexto = AzulPetroleo)
+                }
+                if (usuario.esTurista) {
+                    InsigniaRol(texto = "Turista", colorFondo = Celeste.copy(alpha = 0.8f), colorTexto = AzulPetroleo)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Tarjeta con información detallada
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = BlancoBase),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    ElementoDetallePerfil(
+                        icono = Icons.Default.Email,
+                        titulo = "Correo Electrónico",
+                        valor = usuario.correoElectronico.orEmpty()
+                    )
+                    HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
+                    ElementoDetallePerfil(
+                        icono = Icons.Default.Phone,
+                        titulo = "Teléfono",
+                        valor = if (usuario.telefono.isNullOrBlank()) "No registrado" else usuario.telefono
+                    )
+                    HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
+                    ElementoDetallePerfil(
+                        icono = Icons.Default.Badge,
+                        titulo = "Nombre de Usuario",
+                        valor = usuario.nombreUsuario.orEmpty()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (estadoUiPerfil is EstadoUiPerfil.Error) {
+                Text(
+                    text = estadoUiPerfil.mensaje,
+                    color = Color.Red,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            if (estadoUiPerfil is EstadoUiPerfil.Exito) {
+                Text(
+                    text = "¡Perfil actualizado con éxito!",
+                    color = Color(0xFF2E7D32),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            OutlinedButton(
+                onClick = alCerrarSesion,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cerrar Sesión", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+
+            if (!usuario.esProtagonista && !mostrarFormularioEmpresa) {
+                Spacer(modifier = Modifier.height(28.dp))
+                HorizontalDivider(color = GrisClaro.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                Text(
+                    "¿Eres dueño de un negocio?",
+                    color = AzulPetroleo,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Regístrate como protagonista para publicar tus eventos y atraer más visitantes.",
+                    color = NegroPuro.copy(alpha = 0.7f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+                
+                Button(
+                    onClick = { mostrarFormularioEmpresa = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldColor),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Business, contentDescription = null, tint = AzulPetroleo)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Convertirse en Protagonista", color = AzulPetroleo, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            if (mostrarFormularioEmpresa) {
+                FormularioRegistroEmpresa(
+                    token = token,
+                    ciudades = ciudades,
+                    estadoUiEmpresa = estadoUiEmpresa,
+                    alRegistrar = alRegistrarEmpresa,
+                    alCancelar = { mostrarFormularioEmpresa = false }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun IconoPerfilUsuario(
+    fotoPerfil: String?,
+    uriFotoLocal: Uri?,
+    alHacerClicEnCambiarFoto: () -> Unit,
+    estaCargando: Boolean = false,
+    tamano: Dp = 100.dp
+) {
+    Box(
+        modifier = Modifier
+            .size(tamano)
+            .clickable(onClick = alHacerClicEnCambiarFoto),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(AzulPetroleo)
+                .border(2.5.dp, GoldColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (uriFotoLocal != null) {
+                AsyncImage(
+                    model = uriFotoLocal,
+                    contentDescription = "Foto de perfil",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else if (!fotoPerfil.isNullOrBlank()) {
+                AsyncImage(
+                    model = fotoPerfil.aUrlCompleta(),
+                    contentDescription = "Foto de perfil",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    error = androidx.compose.ui.graphics.painter.ColorPainter(AzulPetroleo)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = GoldColor,
+                    modifier = Modifier.size(tamano * 0.6f)
+                )
+            }
+
+            if (estaCargando) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = GoldColor,
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp
+                    )
+                }
             }
         }
 
-        if (mostrarFormularioEmpresa) {
-            FormularioRegistroEmpresa(
-                token = token,
-                ciudades = ciudades,
-                estadoUiEmpresa = estadoUiEmpresa,
-                alRegistrar = alRegistrarEmpresa,
-                alCancelar = { mostrarFormularioEmpresa = false }
+        // Insignia con icono de cámara
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .align(Alignment.BottomEnd)
+                .clip(CircleShape)
+                .background(GoldColor)
+                .border(1.5.dp, BlancoBase, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.CameraAlt,
+                contentDescription = "Cambiar foto",
+                tint = AzulPetroleo,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun InsigniaRol(texto: String, colorFondo: Color, colorTexto: Color) {
+    Surface(
+        color = colorFondo,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = texto,
+            color = colorTexto,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+    }
+}
+
+@Composable
+fun ElementoDetallePerfil(
+    icono: ImageVector,
+    titulo: String,
+    valor: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Celeste.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icono,
+                contentDescription = null,
+                tint = AzulPetroleo,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = titulo,
+                fontSize = 12.sp,
+                color = NegroPuro.copy(alpha = 0.6f),
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = valor.ifBlank { "No registrado" },
+                fontSize = 16.sp,
+                color = AzulPetroleo,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -379,18 +659,27 @@ fun PantallaPerfil(
     token: String,
     alVolver: () -> Unit,
     alGuardar: (Usuario) -> Unit,
+    alCambiarFoto: (Uri) -> Unit = {},
     estadoUiPerfil: EstadoUiPerfil,
     estadoUiEmpresa: EstadoUiEmpresa,
     alRegistrarEmpresa: (String, Empresa) -> Unit,
     ciudades: List<Ciudad>,
     alCerrarSesion: () -> Unit
 ) {
+    var mostrarFormulario by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mi Perfil", color = GoldColor, fontWeight = FontWeight.Bold) },
+                title = { Text(if (mostrarFormulario) "Editar Perfil" else "Mi Perfil", color = GoldColor, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = alVolver) {
+                    IconButton(onClick = {
+                        if (mostrarFormulario) {
+                            mostrarFormulario = false
+                        } else {
+                            alVolver()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar", tint = GoldColor)
                     }
                 },
@@ -404,12 +693,15 @@ fun PantallaPerfil(
                 usuario = usuario,
                 token = token,
                 alVolver = alVolver,
-                alGuardar = alGuardar,
+                alGuardar = { u, _ -> alGuardar(u) },
+                alCambiarFoto = alCambiarFoto,
                 estadoUiPerfil = estadoUiPerfil,
                 estadoUiEmpresa = estadoUiEmpresa,
                 alRegistrarEmpresa = alRegistrarEmpresa,
                 ciudades = ciudades,
-                alCerrarSesion = alCerrarSesion
+                alCerrarSesion = alCerrarSesion,
+                mostrarFormulario = mostrarFormulario,
+                alAlternarFormulario = { mostrarFormulario = !mostrarFormulario }
             )
         }
     }
