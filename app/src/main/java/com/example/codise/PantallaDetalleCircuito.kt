@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -42,7 +43,8 @@ import com.example.codise.utils.aUrlCompleta
 fun PantallaDetalleCircuito(
     circuito: Circuito,
     puntosVisitados: List<PuntoVisitado>,
-    alAlternarVisitado: (Int) -> Unit
+    alAlternarVisitado: (Int) -> Unit,
+    paddingSuperior: Dp = 0.dp
 ) {
     val cadenas = LocalCadenas.current
     val puntosOrdenados = remember(circuito.puntosInteres) {
@@ -56,6 +58,7 @@ fun PantallaDetalleCircuito(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(top = paddingSuperior)
             .background(Celeste.copy(alpha = 0.1f))
     ) {
         LazyColumn(

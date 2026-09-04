@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -39,7 +40,8 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTube
 @Composable
 fun PantallaDetalleCiudad(
     ciudad: Ciudad,
-    alRegresar: () -> Unit
+    alRegresar: () -> Unit = {},
+    paddingSuperior: Dp = 0.dp
 ) {
     val cadenas = LocalCadenas.current
     var idVideoSeleccionado by remember { mutableStateOf<String?>(null) }
@@ -47,6 +49,7 @@ fun PantallaDetalleCiudad(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(top = paddingSuperior)
             .verticalScroll(rememberScrollState())
     ) {
         // Encabezado con Botón de Regresar e Imagen (PORTADA)
@@ -91,21 +94,6 @@ fun PantallaDetalleCiudad(
                         Text("Imagen de portada no disponible", color = AzulPetroleo, fontSize = 14.sp)
                     }
                 }
-            }
-
-            // Botón de Regresar
-            IconButton(
-                onClick = alRegresar,
-                modifier = Modifier
-                    .padding(top = 16.dp, start = 16.dp)
-                    .statusBarsPadding()
-                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Cerrar",
-                    tint = Color.White
-                )
             }
         }
 
