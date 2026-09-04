@@ -37,6 +37,7 @@ import com.example.codise.data.Evento
 import com.example.codise.receivers.ReceptorNotificacionesEvento
 import com.example.codise.ui.theme.*
 import com.example.codise.utils.AyudanteNotificaciones
+import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -50,6 +51,7 @@ fun PantallaDetalleEvento(
     evento: Evento,
     viewModelEventos: ViewModelEventos? = null
 ) {
+    val cadenas = LocalCadenas.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -109,7 +111,7 @@ fun PantallaDetalleEvento(
                 ) {
                     Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Asistir", color = AzulPetroleo, fontWeight = FontWeight.Bold)
+                    Text(cadenas.asistir, color = AzulPetroleo, fontWeight = FontWeight.Bold)
                 }
 
                 Button(
@@ -133,7 +135,7 @@ fun PantallaDetalleEvento(
                 ) {
                     Icon(Icons.Default.Place, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Llegar", color = GoldColor, fontWeight = FontWeight.Bold)
+                    Text(cadenas.llegar, color = GoldColor, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -157,7 +159,7 @@ fun PantallaDetalleEvento(
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
-                            text = "GRATIS",
+                            text = cadenas.gratis,
                             color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -170,18 +172,18 @@ fun PantallaDetalleEvento(
             Spacer(modifier = Modifier.height(16.dp))
 
             ElementoDetalle(icono = Icons.Default.LocationOn, etiqueta = "Ubicación", valor = evento.ubicacion)
-            ElementoDetalle(icono = Icons.Default.CalendarMonth, etiqueta = "Fecha", valor = "${evento.fechaInicio.take(10)} al ${evento.fechaFin.take(10)}")
+            ElementoDetalle(icono = Icons.Default.CalendarMonth, etiqueta = "Fecha", valor = "${evento.fechaInicio.take(10)} - ${evento.fechaFin.take(10)}")
             if (evento.empresaNombre != null) {
-                ElementoDetalle(icono = Icons.Default.Person, etiqueta = "Organizado por", valor = evento.empresaNombre)
+                ElementoDetalle(icono = Icons.Default.Person, etiqueta = cadenas.organizadoPor, valor = evento.empresaNombre)
             }
             if (evento.cupoMaximo != null) {
-                ElementoDetalle(icono = Icons.Default.People, etiqueta = "Cupo Máximo", valor = "${evento.cupoMaximo} personas")
+                ElementoDetalle(icono = Icons.Default.People, etiqueta = cadenas.cupoMaximo, valor = "${evento.cupoMaximo} ${cadenas.personas}")
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = GrisClaro.copy(alpha = 0.5f))
 
             Text(
-                text = "Descripción",
+                text = cadenas.descripcion,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = AzulPetroleo

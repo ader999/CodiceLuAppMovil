@@ -1,4 +1,13 @@
 <resources>
     <string name="app_name">Codice路</string>
     <string name="google_web_client_id" translatable="false">397372555682-88enhi6u9k8ibu98j58p5df30usp872v.apps.googleusercontent.com</string>
+    <string name="language_es">Español</string>
+    <string name="language_en">Inglés</string>
+    <string name="language_zh">Chino Mandarín</string>
+    <string name="select_language">Seleccionar Idioma</string>
+    <string name="nav_home">Inicio</string>
+    <string name="nav_circuits">Circuitos</string>
+    <string name="nav_events">Eventos</string>
+    <string name="nav_feed">Mural</string>
+    <string name="nav_profile">Perfil</string>
 </resources>

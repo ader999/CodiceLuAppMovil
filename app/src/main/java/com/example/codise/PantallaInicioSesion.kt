@@ -22,14 +22,35 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.codise.data.GestorIdioma
+import com.example.codise.data.IdiomaApp
+import com.example.codise.data.ServicioApi
 import com.example.codise.data.Usuario
 import com.example.codise.ui.theme.*
+import com.example.codise.utils.LocalCadenas
 
 @Composable
-fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
+fun PantallaLogin(
+    viewModel: ViewModelLogin = viewModel(),
+    gestorIdioma: GestorIdioma? = null,
+    idiomaActual: IdiomaApp = IdiomaApp.ESPANOL
+) {
     val contexto = LocalContext.current
+    val cadenas = LocalCadenas.current
     var modoRegistro by remember { mutableStateOf(false) }
     val estadoUi by viewModel.estadoUi.collectAsState()
+    var mostrarDialogoIdioma by remember { mutableStateOf(false) }
+
+    if (mostrarDialogoIdioma && gestorIdioma != null) {
+        DialogoSeleccionIdioma(
+            idiomaActual = idiomaActual,
+            alSeleccionarIdioma = { nuevoIdioma ->
+                gestorIdioma.cambiarIdioma(nuevoIdioma)
+                ServicioApi.limpiarCache()
+            },
+            alCerrar = { mostrarDialogoIdioma = false }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -40,6 +61,21 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (gestorIdioma != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                BotonSelectorIdioma(
+                    idiomaActual = idiomaActual,
+                    alHacerClic = { mostrarDialogoIdioma = true },
+                    colorFondo = BlancoBase.copy(alpha = 0.9f),
+                    colorTexto = AzulPetroleo
+                )
+            }
+        }
         // Sección de Logo
         Image(
             painter = painterResource(id = R.drawable.ic_logo),
@@ -66,7 +102,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (modoRegistro) "Crear Cuenta" else "Iniciar Sesión",
+                    text = if (modoRegistro) cadenas.crearCuenta else cadenas.iniciarSesion,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = AzulPetroleo
@@ -87,7 +123,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                     OutlinedTextField(
                         value = nombre,
                         onValueChange = { nombre = it },
-                        label = { Text("Nombre") },
+                        label = { Text(cadenas.nombre) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = coloresCamposTexto()
@@ -96,7 +132,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                     OutlinedTextField(
                         value = apellido,
                         onValueChange = { apellido = it },
-                        label = { Text("Apellido") },
+                        label = { Text(cadenas.apellido) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = coloresCamposTexto()
@@ -105,7 +141,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                     OutlinedTextField(
                         value = usuario,
                         onValueChange = { usuario = it },
-                        label = { Text("Usuario") },
+                        label = { Text(cadenas.nombreUsuario) },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = AzulPetroleo) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -115,7 +151,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                     OutlinedTextField(
                         value = telefono,
                         onValueChange = { telefono = it },
-                        label = { Text("Teléfono") },
+                        label = { Text(cadenas.telefono) },
                         leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = AzulPetroleo) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -127,7 +163,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                 OutlinedTextField(
                     value = correo,
                     onValueChange = { correo = it },
-                    label = { Text("Usuario o Correo") },
+                    label = { Text(cadenas.correoElectronico) },
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = AzulPetroleo) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -139,7 +175,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                 OutlinedTextField(
                     value = contrasena,
                     onValueChange = { contrasena = it },
-                    label = { Text("Contraseña") },
+                    label = { Text(cadenas.contrasena) },
                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = AzulPetroleo) },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
@@ -154,14 +190,14 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(checked = esProtagonista, onCheckedChange = { esProtagonista = it })
-                        Text("Es Protagonista", color = AzulPetroleo)
+                        Text(cadenas.soyProtagonista, color = AzulPetroleo)
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(checked = esTurista, onCheckedChange = { esTurista = it })
-                        Text("Es Turista", color = AzulPetroleo)
+                        Text(cadenas.soyTurista, color = AzulPetroleo)
                     }
                 }
 
@@ -197,7 +233,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = if (modoRegistro) "REGISTRARSE" else "ENTRAR",
+                            text = if (modoRegistro) cadenas.crearCuenta.uppercase() else cadenas.iniciarSesion.uppercase(),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = BlancoBase
@@ -224,7 +260,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                         color = GrisClaro.copy(alpha = 0.5f)
                     )
                     Text(
-                        text = "  o continúa con  ",
+                        text = "  o  ",
                         color = AzulPetroleo.copy(alpha = 0.6f),
                         fontSize = 13.sp
                     )
@@ -257,7 +293,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Continuar con Google",
+                            text = cadenas.continuarConGoogle,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             color = AzulPetroleo
@@ -269,7 +305,7 @@ fun PantallaLogin(viewModel: ViewModelLogin = viewModel()) {
 
                 TextButton(onClick = { modoRegistro = !modoRegistro }) {
                     Text(
-                        text = if (modoRegistro) "¿Ya tienes cuenta? Inicia Sesión" else "¿No tienes cuenta? Regístrate",
+                        text = if (modoRegistro) cadenas.yaTienesCuenta else cadenas.noTienesCuenta,
                         color = AzulPetroleo
                     )
                 }

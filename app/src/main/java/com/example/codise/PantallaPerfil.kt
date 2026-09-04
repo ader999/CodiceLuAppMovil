@@ -32,9 +32,11 @@ import coil.compose.AsyncImage
 import com.example.codise.data.CATEGORIAS_EMPRESA
 import com.example.codise.data.Ciudad
 import com.example.codise.data.Empresa
+import com.example.codise.data.IdiomaApp
 import com.example.codise.data.OpcionCategoriaEmpresa
 import com.example.codise.data.Usuario
 import com.example.codise.ui.theme.*
+import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
 
 @Composable
@@ -52,8 +54,11 @@ fun ContenidoPerfil(
     mostrarFormulario: Boolean = false,
     alAlternarFormulario: () -> Unit = {},
     empresasUsuario: List<Empresa> = emptyList(),
+    idiomaActual: IdiomaApp = IdiomaApp.ESPANOL,
+    alCambiarIdioma: () -> Unit = {},
     paddingSuperior: Dp = 0.dp
 ) {
+    val cadenas = LocalCadenas.current
     var nombre by remember(usuario) { mutableStateOf(usuario.nombre.orEmpty()) }
     var apellido by remember(usuario) { mutableStateOf(usuario.apellido.orEmpty()) }
     var nombreUsuario by remember(usuario) { mutableStateOf(usuario.nombreUsuario.orEmpty()) }
@@ -110,7 +115,7 @@ fun ContenidoPerfil(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Toca para cambiar foto",
+            text = cadenas.cambiarFoto,
             color = AzulPetroleo.copy(alpha = 0.7f),
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
@@ -124,7 +129,7 @@ fun ContenidoPerfil(
         if (mostrarFormulario) {
             // VISTA FORMULARIO DE EDICIÓN
             Text(
-                text = "Editar Perfil",
+                text = cadenas.editarPerfil,
                 color = AzulPetroleo,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
@@ -141,11 +146,11 @@ fun ContenidoPerfil(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    CampoTextoPerfil(etiqueta = "Nombre", valor = nombre, alCambiarValor = { nombre = it })
-                    CampoTextoPerfil(etiqueta = "Apellido", valor = apellido, alCambiarValor = { apellido = it })
-                    CampoTextoPerfil(etiqueta = "Usuario", valor = nombreUsuario, alCambiarValor = { nombreUsuario = it })
-                    CampoTextoPerfil(etiqueta = "Correo Electrónico", valor = correo, alCambiarValor = { correo = it })
-                    CampoTextoPerfil(etiqueta = "Teléfono", valor = telefono, alCambiarValor = { telefono = it })
+                    CampoTextoPerfil(etiqueta = cadenas.nombre, valor = nombre, alCambiarValor = { nombre = it })
+                    CampoTextoPerfil(etiqueta = cadenas.apellido, valor = apellido, alCambiarValor = { apellido = it })
+                    CampoTextoPerfil(etiqueta = cadenas.nombreUsuario, valor = nombreUsuario, alCambiarValor = { nombreUsuario = it })
+                    CampoTextoPerfil(etiqueta = cadenas.correoElectronico, valor = correo, alCambiarValor = { correo = it })
+                    CampoTextoPerfil(etiqueta = cadenas.telefono, valor = telefono, alCambiarValor = { telefono = it })
                 }
             }
 
@@ -161,7 +166,7 @@ fun ContenidoPerfil(
 
             if (estadoUiPerfil is EstadoUiPerfil.Exito) {
                 Text(
-                    text = "¡Perfil actualizado con éxito!",
+                    text = cadenas.perfilActualizado,
                     color = Color(0xFF2E7D32),
                     modifier = Modifier.padding(bottom = 8.dp),
                     fontWeight = FontWeight.SemiBold
@@ -189,7 +194,7 @@ fun ContenidoPerfil(
                 if (estaCargandoPerfil) {
                     CircularProgressIndicator(color = GoldColor, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Guardar Cambios", color = GoldColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(cadenas.guardar, color = GoldColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -204,7 +209,7 @@ fun ContenidoPerfil(
                 border = androidx.compose.foundation.BorderStroke(1.dp, AzulPetroleo),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Cancelar", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(cadenas.cancelar, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         } else {
             // VISTA INFORMACIÓN DE PERFIL (VISTA PRINCIPAL)
@@ -233,12 +238,12 @@ fun ContenidoPerfil(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (usuario.esStaff) {
-                    InsigniaRol(texto = "Staff", colorFondo = AzulPetroleo, colorTexto = GoldColor)
+                    InsigniaRol(texto = cadenas.rolStaff, colorFondo = AzulPetroleo, colorTexto = GoldColor)
                 }
                 if (esProtagonistaEfectivo) {
-                    InsigniaRol(texto = "Protagonista", colorFondo = GoldColor, colorTexto = AzulPetroleo)
+                    InsigniaRol(texto = cadenas.rolProtagonista, colorFondo = GoldColor, colorTexto = AzulPetroleo)
                 } else if (usuario.esTurista) {
-                    InsigniaRol(texto = "Turista", colorFondo = Celeste.copy(alpha = 0.8f), colorTexto = AzulPetroleo)
+                    InsigniaRol(texto = cadenas.rolTurista, colorFondo = Celeste.copy(alpha = 0.8f), colorTexto = AzulPetroleo)
                 }
             }
 
@@ -257,20 +262,78 @@ fun ContenidoPerfil(
                 ) {
                     ElementoDetallePerfil(
                         icono = Icons.Default.Email,
-                        titulo = "Correo Electrónico",
+                        titulo = cadenas.correoElectronico,
                         valor = usuario.correoElectronico.orEmpty()
                     )
                     HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
                     ElementoDetallePerfil(
                         icono = Icons.Default.Phone,
-                        titulo = "Teléfono",
-                        valor = if (usuario.telefono.isNullOrBlank()) "No registrado" else usuario.telefono
+                        titulo = cadenas.telefono,
+                        valor = if (usuario.telefono.isNullOrBlank()) cadenas.noRegistrado else usuario.telefono
                     )
                     HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
                     ElementoDetallePerfil(
                         icono = Icons.Default.Badge,
-                        titulo = "Nombre de Usuario",
+                        titulo = cadenas.nombreUsuario,
                         valor = usuario.nombreUsuario.orEmpty()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tarjeta de Selección de Idioma
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { alCambiarIdioma() },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = BlancoBase),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(GoldColor.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = null,
+                                tint = AzulPetroleo,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = cadenas.idioma,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AzulPetroleo
+                            )
+                            Text(
+                                text = "${idiomaActual.bandera} ${idiomaActual.etiquetaNativa}",
+                                fontSize = 13.sp,
+                                color = NegroPuro.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                    BotonSelectorIdioma(
+                        idiomaActual = idiomaActual,
+                        alHacerClic = alCambiarIdioma
                     )
                 }
             }
@@ -287,7 +350,7 @@ fun ContenidoPerfil(
 
             if (estadoUiPerfil is EstadoUiPerfil.Exito) {
                 Text(
-                    text = "¡Perfil actualizado con éxito!",
+                    text = cadenas.perfilActualizado,
                     color = Color(0xFF2E7D32),
                     modifier = Modifier.padding(bottom = 8.dp),
                     fontWeight = FontWeight.SemiBold
@@ -303,7 +366,7 @@ fun ContenidoPerfil(
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Cerrar Sesión", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(cadenas.cerrarSesion, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
 
             if (estadoUiEmpresa is EstadoUiEmpresa.Exito) {

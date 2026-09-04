@@ -35,6 +35,7 @@ import com.example.codise.data.Circuito
 import com.example.codise.data.PuntoInteres
 import com.example.codise.data.local.PuntoVisitado
 import com.example.codise.ui.theme.*
+import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
 
 @Composable
@@ -43,6 +44,7 @@ fun PantallaDetalleCircuito(
     puntosVisitados: List<PuntoVisitado>,
     alAlternarVisitado: (Int) -> Unit
 ) {
+    val cadenas = LocalCadenas.current
     val puntosOrdenados = remember(circuito.puntosInteres) {
         circuito.puntosInteres.sortedBy { it.orden }
     }
@@ -69,7 +71,7 @@ fun PantallaDetalleCircuito(
             // Encabezado de puntos de interés
             item {
                 Text(
-                    "Puntos del Recorrido",
+                    cadenas.puntosDelRecorrido,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = AzulPetroleo,
@@ -188,6 +190,7 @@ fun TarjetaDetallePuntoInteres(
     alAlternarVisitado: () -> Unit,
     alHacerClicEnCompartir: () -> Unit
 ) {
+    val cadenas = LocalCadenas.current
     val contexto = LocalContext.current
     val colorEstado = if (estaValidado) GoldColor else if (estaVisitado) Color(0xFF4CAF50) else GoldColor
 
@@ -233,7 +236,7 @@ fun TarjetaDetallePuntoInteres(
 
                 if (estaValidado) {
                     IconButton(onClick = alHacerClicEnCompartir) {
-                        Icon(Icons.Default.Share, contentDescription = "Compartir", tint = AzulPetroleo)
+                        Icon(Icons.Default.Share, contentDescription = cadenas.compartir, tint = AzulPetroleo)
                     }
                 }
             }
@@ -278,7 +281,7 @@ fun TarjetaDetallePuntoInteres(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        if (estaValidado) "Verificado" else if (estaVisitado) "Visitado" else "Ya lo visité",
+                        if (estaValidado) cadenas.verificado else if (estaVisitado) cadenas.visitado else cadenas.yaLoVisite,
                         fontSize = 12.sp
                     )
                 }
@@ -302,7 +305,7 @@ fun TarjetaDetallePuntoInteres(
                 ) {
                     Icon(Icons.Default.Directions, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Cómo llegar", fontSize = 12.sp)
+                    Text(cadenas.comoLlegar, fontSize = 12.sp)
                 }
             }
         }
