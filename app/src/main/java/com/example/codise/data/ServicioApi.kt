@@ -19,6 +19,9 @@ interface ServicioApi {
     @POST("api/auth/login/")
     suspend fun iniciarSesion(@Body credenciales: SolicitudLogin): Response<RespuestaAutenticacion>
 
+    @POST("api/auth/google/")
+    suspend fun autenticarConGoogle(@Body solicitud: SolicitudAuthGoogle): Response<RespuestaAutenticacion>
+
     @PATCH("api/auth/me/")
     suspend fun actualizarPerfil(
         @Header("Authorization") token: String,
@@ -138,6 +141,11 @@ interface ServicioApi {
 data class SolicitudLogin(
     @com.google.gson.annotations.SerializedName("username") val nombreUsuario: String,
     @com.google.gson.annotations.SerializedName("password") val contrasena: String
+)
+
+data class SolicitudAuthGoogle(
+    @com.google.gson.annotations.SerializedName("id_token") val idToken: String,
+    @com.google.gson.annotations.SerializedName("credential") val credencial: String = idToken
 )
 
 data class RespuestaAsistencia(
