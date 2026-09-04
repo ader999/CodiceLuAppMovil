@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -29,6 +30,7 @@ import com.example.codise.ui.theme.AzulPetroleo
 import com.example.codise.ui.theme.Codice路Theme
 import com.example.codise.ui.theme.GoldColor
 import com.example.codise.ui.theme.NegroPuro
+import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.extraerIdVideoYoutube
 import com.example.codise.utils.aUrlCompleta
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
@@ -38,13 +40,16 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTube
 @Composable
 fun PantallaDetalleCiudad(
     ciudad: Ciudad,
-    alRegresar: () -> Unit
+    alRegresar: () -> Unit = {},
+    paddingSuperior: Dp = 0.dp
 ) {
+    val cadenas = LocalCadenas.current
     var idVideoSeleccionado by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(top = paddingSuperior)
             .verticalScroll(rememberScrollState())
     ) {
         // Encabezado con Botón de Regresar e Imagen (PORTADA)
@@ -90,21 +95,6 @@ fun PantallaDetalleCiudad(
                     }
                 }
             }
-
-            // Botón de Regresar
-            IconButton(
-                onClick = alRegresar,
-                modifier = Modifier
-                    .padding(top = 16.dp, start = 16.dp)
-                    .statusBarsPadding()
-                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Cerrar",
-                    tint = Color.White
-                )
-            }
         }
 
         Column(modifier = Modifier.padding(16.dp)) {
@@ -118,7 +108,7 @@ fun PantallaDetalleCiudad(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Descripción",
+                text = cadenas.descripcion,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = AzulPetroleo
@@ -133,7 +123,7 @@ fun PantallaDetalleCiudad(
             if (ciudad.galeria.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Galería Multimedia",
+                    text = cadenas.galeriaMultimedia,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = AzulPetroleo
@@ -165,7 +155,7 @@ fun PantallaDetalleCiudad(
                             ) {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "Cerrar video",
+                                    contentDescription = cadenas.cerrar,
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -188,7 +178,7 @@ fun PantallaDetalleCiudad(
             if (ciudad.datosHistoricos.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Datos Históricos",
+                    text = cadenas.datosHistoricos,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = AzulPetroleo
@@ -203,7 +193,7 @@ fun PantallaDetalleCiudad(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(text = datoHistorico.titulo, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(text = "Época: ${datoHistorico.epocaOAno}", fontSize = 12.sp, color = GoldColor)
+                            Text(text = "${cadenas.epoca}: ${datoHistorico.epocaOAno}", fontSize = 12.sp, color = GoldColor)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(text = datoHistorico.contenido, fontSize = 14.sp)
                         }

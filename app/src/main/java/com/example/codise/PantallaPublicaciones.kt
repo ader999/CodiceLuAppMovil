@@ -41,6 +41,7 @@ import coil.compose.AsyncImage
 import com.example.codise.data.ComentarioPublicacion
 import com.example.codise.data.Publicacion
 import com.example.codise.ui.theme.*
+import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -137,6 +138,7 @@ fun PantallaPublicaciones(
 
 @Composable
 fun EstadoPublicacionesVacio(modifier: Modifier = Modifier) {
+    val cadenas = LocalCadenas.current
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center,
@@ -150,13 +152,13 @@ fun EstadoPublicacionesVacio(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Aún no hay publicaciones",
+            text = cadenas.sinPublicaciones,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = AzulPetroleo
         )
         Text(
-            text = "¡Sé el primero en compartir tu experiencia!",
+            text = cadenas.seElPrimeroPublicar,
             fontSize = 14.sp,
             color = GrisClaro
         )
@@ -348,6 +350,7 @@ fun HojaComentariosPublicacion(
     viewModel: ViewModelPublicaciones,
     alCerrar: () -> Unit
 ) {
+    val cadenas = LocalCadenas.current
     val contexto = LocalContext.current
     var textoComentario by remember { mutableStateOf("") }
     var estaEnviando by remember { mutableStateOf(false) }
@@ -393,13 +396,13 @@ fun HojaComentariosPublicacion(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Comentarios (${publicacion.comentarios.size})",
+                    text = "${cadenas.comentarios} (${publicacion.comentarios.size})",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = AzulPetroleo
                 )
                 IconButton(onClick = alCerrar) {
-                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = AzulPetroleo)
+                    Icon(Icons.Default.Close, contentDescription = cadenas.cerrar, tint = AzulPetroleo)
                 }
             }
 
@@ -426,14 +429,14 @@ fun HojaComentariosPublicacion(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "No hay comentarios aún",
+                            text = cadenas.comentarios,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = AzulPetroleo
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "¡Sé el primero en compartir lo que piensas!",
+                            text = cadenas.seElPrimeroPublicar,
                             fontSize = 13.sp,
                             color = GrisClaro
                         )
@@ -466,7 +469,7 @@ fun HojaComentariosPublicacion(
                     OutlinedTextField(
                         value = textoComentario,
                         onValueChange = { textoComentario = it },
-                        placeholder = { Text("Escribe un comentario...", fontSize = 14.sp, color = GrisClaro) },
+                        placeholder = { Text(cadenas.escribeComentario, fontSize = 14.sp, color = GrisClaro) },
                         modifier = Modifier
                             .weight(1f)
                             .padding(end = 8.dp),

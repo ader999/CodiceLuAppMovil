@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -36,6 +38,7 @@ import com.example.codise.data.Evento
 import com.example.codise.receivers.ReceptorNotificacionesEvento
 import com.example.codise.ui.theme.*
 import com.example.codise.utils.AyudanteNotificaciones
+import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -47,11 +50,14 @@ import java.util.Locale
 @Composable
 fun PantallaDetalleEvento(
     evento: Evento,
-    viewModelEventos: ViewModelEventos? = null
+    viewModelEventos: ViewModelEventos? = null,
+    paddingSuperior: Dp = 0.dp
 ) {
+    val cadenas = LocalCadenas.current
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(top = paddingSuperior)
             .verticalScroll(rememberScrollState())
     ) {
         if (evento.imagen != null) {
@@ -108,12 +114,16 @@ fun PantallaDetalleEvento(
                 ) {
                     Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Asistir", color = AzulPetroleo, fontWeight = FontWeight.Bold)
+                    Text(cadenas.asistir, color = AzulPetroleo, fontWeight = FontWeight.Bold)
                 }
 
                 Button(
                     onClick = {
-                        val gmmIntentUri = Uri.parse("geo:0,0?q=${Uri.encode(evento.ubicacion)}")
+                        val gmmIntentUri = if (evento.latitud != null && evento.longitud != null) {
+                            Uri.parse("geo:${evento.latitud},${evento.longitud}?q=${evento.latitud},${evento.longitud}(${Uri.encode(evento.titulo)})")
+                        } else {
+                            Uri.parse("geo:0,0?q=${Uri.encode(evento.ubicacion)}")
+                        }
                         val mapaIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                         mapaIntent.setPackage("com.google.android.apps.maps")
                         if (mapaIntent.resolveActivity(contexto.packageManager) != null) {
@@ -128,7 +138,7 @@ fun PantallaDetalleEvento(
                 ) {
                     Icon(Icons.Default.Place, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Llegar", color = GoldColor, fontWeight = FontWeight.Bold)
+                    Text(cadenas.llegar, color = GoldColor, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -152,7 +162,7 @@ fun PantallaDetalleEvento(
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
-                            text = "GRATIS",
+                            text = cadenas.gratis,
                             color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -165,15 +175,18 @@ fun PantallaDetalleEvento(
             Spacer(modifier = Modifier.height(16.dp))
 
             ElementoDetalle(icono = Icons.Default.LocationOn, etiqueta = "Ubicación", valor = evento.ubicacion)
-            ElementoDetalle(icono = Icons.Default.CalendarMonth, etiqueta = "Fecha", valor = "${evento.fechaInicio.take(10)} al ${evento.fechaFin.take(10)}")
+            ElementoDetalle(icono = Icons.Default.CalendarMonth, etiqueta = "Fecha", valor = "${evento.fechaInicio.take(10)} - ${evento.fechaFin.take(10)}")
             if (evento.empresaNombre != null) {
-                ElementoDetalle(icono = Icons.Default.Person, etiqueta = "Organizado por", valor = evento.empresaNombre)
+                ElementoDetalle(icono = Icons.Default.Person, etiqueta = cadenas.organizadoPor, valor = evento.empresaNombre)
+            }
+            if (evento.cupoMaximo != null) {
+                ElementoDetalle(icono = Icons.Default.People, etiqueta = cadenas.cupoMaximo, valor = "${evento.cupoMaximo} ${cadenas.personas}")
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = GrisClaro.copy(alpha = 0.5f))
 
             Text(
-                text = "Descripción",
+                text = cadenas.descripcion,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = AzulPetroleo

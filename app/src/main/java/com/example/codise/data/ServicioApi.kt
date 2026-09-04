@@ -22,10 +22,34 @@ interface ServicioApi {
     @POST("api/auth/google/")
     suspend fun autenticarConGoogle(@Body solicitud: SolicitudAuthGoogle): Response<RespuestaAutenticacion>
 
+    @GET("api/auth/me/")
+    suspend fun obtenerPerfil(
+        @Header("Authorization") token: String
+    ): Response<Usuario>
+
     @PATCH("api/auth/me/")
     suspend fun actualizarPerfil(
         @Header("Authorization") token: String,
         @Body usuario: Usuario
+    ): Response<Usuario>
+
+    @Multipart
+    @PATCH("api/auth/me/")
+    suspend fun actualizarFotoPerfil(
+        @Header("Authorization") token: String,
+        @Part foto_perfil: MultipartBody.Part
+    ): Response<Usuario>
+
+    @Multipart
+    @PATCH("api/auth/me/")
+    suspend fun actualizarPerfilMultipart(
+        @Header("Authorization") token: String,
+        @Part("first_name") nombre: RequestBody? = null,
+        @Part("last_name") apellido: RequestBody? = null,
+        @Part("username") nombreUsuario: RequestBody? = null,
+        @Part("email") correoElectronico: RequestBody? = null,
+        @Part("telefono") telefono: RequestBody? = null,
+        @Part foto_perfil: MultipartBody.Part? = null
     ): Response<Usuario>
 
     @GET("api/ciudades/")
@@ -56,11 +80,36 @@ interface ServicioApi {
         @Body evento: SolicitudEvento
     ): Response<Evento>
 
+    @Multipart
+    @POST("api/eventos/")
+    suspend fun crearEventoMultipart(
+        @Header("Authorization") token: String,
+        @Part("titulo") titulo: RequestBody,
+        @Part("descripcion") descripcion: RequestBody,
+        @Part("ciudad") ciudad: RequestBody,
+        @Part("empresa") empresa: RequestBody? = null,
+        @Part("fecha_inicio") fechaInicio: RequestBody,
+        @Part("fecha_fin") fechaFin: RequestBody,
+        @Part("ubicacion") ubicacion: RequestBody,
+        @Part("precio_entrada") precioEntrada: RequestBody,
+        @Part("es_gratuito") esGratuito: RequestBody,
+        @Part("cupo_maximo") cupoMaximo: RequestBody? = null,
+        @Part("latitud") latitud: RequestBody? = null,
+        @Part("longitud") longitud: RequestBody? = null,
+        @Part("esta_activo") estaActivo: RequestBody? = null,
+        @Part imagen: MultipartBody.Part? = null
+    ): Response<Evento>
+
     @POST("api/eventos/{id}/asistir/")
     suspend fun registrarAsistencia(
         @Header("Authorization") token: String,
         @Path("id") idEvento: Int
     ): Response<RespuestaAsistencia>
+
+    @GET("api/empresas/")
+    suspend fun obtenerEmpresas(
+        @Query("usuario") idUsuario: Int? = null
+    ): Response<List<Empresa>>
 
     @POST("api/empresas/")
     suspend fun registrarEmpresa(
@@ -108,17 +157,34 @@ interface ServicioApi {
         @Body solicitud: SolicitudComentario
     ): Response<ComentarioPublicacion>
 
+    @POST("api/asistente/chat/")
+    suspend fun enviarMensajeAsistente(
+        @Header("Authorization") token: String? = null,
+        @Body solicitud: SolicitudAsistente
+    ): Response<RespuestaAsistente>
+
     companion object {
         const val URL_BASE = "https://codisecore-production.up.railway.app/"
         private var instancia: ServicioApi? = null
+        private var cacheOkHttp: Cache? = null
+
+        fun limpiarCache() {
+            try {
+                cacheOkHttp?.evictAll()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
         fun obtenerInstancia(contexto: Context): ServicioApi {
             return instancia ?: synchronized(this) {
                 val tamanoCache = (5 * 1024 * 1024).toLong() // 5 MB
                 val cache = Cache(contexto.cacheDir, tamanoCache)
+                cacheOkHttp = cache
 
                 val okHttpClient = OkHttpClient.Builder()
                     .cache(cache)
+                    .addInterceptor(InterceptorIdioma(contexto))
                     .addInterceptor(InterceptorAutenticacion(contexto))
                     .protocols(listOf(Protocol.HTTP_1_1))
                     .connectTimeout(60, TimeUnit.SECONDS)
@@ -158,4 +224,34 @@ data class RespuestaLike(
     val message: String,
     val ha_dado_like: Boolean,
     val total_likes: Int
+)
+
+data class UbicacionGps(
+    val latitud: Double,
+    val longitud: Double
+)
+
+data class ChatHistoryItem(
+    val role: String,
+    val parts: List<String>
+)
+
+data class SolicitudAsistente(
+    val mensaje: String,
+    val idioma: String = "es",
+    val ubicacion: UbicacionGps? = null,
+    val historial: List<ChatHistoryItem>? = null
+)
+
+data class HerramientaUtilizada(
+    val nombre: String? = null,
+    val argumentos: Map<String, Any?>? = null
+)
+
+data class RespuestaAsistente(
+    val nombre_asistente: String? = null,
+    val respuesta: String,
+    val herramientas_utilizadas: List<HerramientaUtilizada>? = null,
+    val modelo_utilizado: String? = null,
+    val idioma: String? = null
 )

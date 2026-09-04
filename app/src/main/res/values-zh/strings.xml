@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Codice路</string>
+    <string name="language_es">西班牙语</string>
+    <string name="language_en">英语</string>
+    <string name="language_zh">中文 (简体)</string>
+    <string name="select_language">选择语言</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_circuits">路线</string>
+    <string name="nav_events">活动</string>
+    <string name="nav_feed">动态</string>
+    <string name="nav_profile">个人</string>
+</resources>

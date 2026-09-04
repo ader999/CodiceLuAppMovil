@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
 
 @Composable
@@ -64,8 +65,9 @@ fun ListaCircuitos(
     alHacerClicEnVerMas: (Circuito) -> Unit,
     paddingSuperior: Dp = 0.dp
 ) {
+    val cadenas = LocalCadenas.current
     if (circuitos.isEmpty()) {
-        EstadoVacio("No hay circuitos disponibles.", Modifier.padding(top = paddingSuperior))
+        EstadoVacio(cadenas.sinCircuitos, Modifier.padding(top = paddingSuperior))
     } else {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -84,8 +86,9 @@ fun ListaPuntosInteres(
     puntos: List<PuntoInteres>,
     paddingSuperior: Dp = 0.dp
 ) {
+    val cadenas = LocalCadenas.current
     if (puntos.isEmpty()) {
-        EstadoVacio("No hay puntos de interés disponibles.", Modifier.padding(top = paddingSuperior))
+        EstadoVacio(cadenas.sinPuntosInteres, Modifier.padding(top = paddingSuperior))
     } else {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -211,13 +214,14 @@ fun TarjetaCircuito(circuito: Circuito, alHacerClicEnVerMas: (Circuito) -> Unit)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                val cadenas = LocalCadenas.current
                 Button(
                     onClick = { alHacerClicEnVerMas(circuito) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Ver más", fontWeight = FontWeight.Bold)
+                    Text(cadenas.verMas, fontWeight = FontWeight.Bold)
                 }
             }
         }

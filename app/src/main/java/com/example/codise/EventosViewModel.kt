@@ -1,6 +1,7 @@
 package com.example.codise
 
 import android.app.Application
+import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
@@ -10,8 +11,13 @@ import com.example.codise.data.Evento
 import com.example.codise.data.SolicitudEvento
 import com.example.codise.data.AdministradorSesion
 import com.example.codise.utils.UtilidadesRed
+import com.example.codise.utils.obtenerArchivoComprimidoDeUri
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 sealed class EstadoUiEventos {
     object Inactivo : EstadoUiEventos()
@@ -74,14 +80,41 @@ class ViewModelEventos(aplicacion: Application) : AndroidViewModel(aplicacion) {
         }
     }
 
-    fun subirEvento(solicitudEvento: SolicitudEvento) {
+    fun subirEvento(solicitudEvento: SolicitudEvento, uriImagen: Uri? = null) {
         val sesion = administradorSesion.obtenerSesion() ?: return
         val token = "Bearer ${sesion.tokens.access}"
 
         viewModelScope.launch {
             _estaSubiendo.value = true
             try {
-                val respuesta = servicioApi.crearEvento(token, solicitudEvento)
+                val respuesta = if (uriImagen != null) {
+                    val context = getApplication<Application>()
+                    val archivo = context.obtenerArchivoComprimidoDeUri(uriImagen)
+                    val archivoPeticion = archivo.asRequestBody("image/*".toMediaTypeOrNull())
+                    val parteImagen = MultipartBody.Part.createFormData("imagen", archivo.name, archivoPeticion)
+
+                    val textMedia = "text/plain".toMediaTypeOrNull()
+                    servicioApi.crearEventoMultipart(
+                        token = token,
+                        titulo = solicitudEvento.titulo.toRequestBody(textMedia),
+                        descripcion = solicitudEvento.descripcion.toRequestBody(textMedia),
+                        ciudad = solicitudEvento.ciudad.toString().toRequestBody(textMedia),
+                        empresa = solicitudEvento.empresa?.toString()?.toRequestBody(textMedia),
+                        fechaInicio = solicitudEvento.fechaInicio.toRequestBody(textMedia),
+                        fechaFin = solicitudEvento.fechaFin.toRequestBody(textMedia),
+                        ubicacion = solicitudEvento.ubicacion.toRequestBody(textMedia),
+                        precioEntrada = solicitudEvento.precioEntrada.toRequestBody(textMedia),
+                        esGratuito = solicitudEvento.esGratuito.toString().toRequestBody(textMedia),
+                        cupoMaximo = solicitudEvento.cupoMaximo?.toString()?.toRequestBody(textMedia),
+                        latitud = solicitudEvento.latitud?.toString()?.toRequestBody(textMedia),
+                        longitud = solicitudEvento.longitud?.toString()?.toRequestBody(textMedia),
+                        estaActivo = solicitudEvento.estaActivo.toString().toRequestBody(textMedia),
+                        imagen = parteImagen
+                    )
+                } else {
+                    servicioApi.crearEvento(token, solicitudEvento)
+                }
+
                 if (respuesta.isSuccessful) {
                     _subidaExitosa.value = true
                     obtenerEventos()

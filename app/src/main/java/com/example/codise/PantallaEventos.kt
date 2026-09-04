@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.codise.data.Evento
 import com.example.codise.ui.theme.*
+import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
 import java.time.LocalDate
 import java.time.YearMonth
@@ -49,6 +50,7 @@ fun PantallaEventos(
             if (puedeSubir) {
                 FloatingActionButton(
                     onClick = alHacerClicEnSubir,
+                    modifier = Modifier.padding(bottom = 72.dp),
                     containerColor = GoldColor,
                     contentColor = Color.White
                 ) {
@@ -102,6 +104,7 @@ fun PantallaEventos(
 
 @Composable
 fun EstadoEventosVacio(modifier: Modifier = Modifier) {
+    val cadenas = LocalCadenas.current
     Column(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -115,13 +118,13 @@ fun EstadoEventosVacio(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No hay eventos próximos",
+            text = cadenas.sinEventosProximos,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = AzulPetroleo
         )
         Text(
-            text = "Vuelve más tarde para ver nuevas actividades",
+            text = cadenas.vuelveMasTardeEventos,
             fontSize = 14.sp,
             color = GrisClaro
         )
@@ -130,6 +133,7 @@ fun EstadoEventosVacio(modifier: Modifier = Modifier) {
 
 @Composable
 fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
+    val cadenas = LocalCadenas.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -164,7 +168,7 @@ fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "GRATIS",
+                                text = cadenas.gratis,
                                 color = Color.White,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -213,7 +217,7 @@ fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
                     modifier = Modifier.align(Alignment.End),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text("Ver más", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(cadenas.verMas, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(16.dp))
                 }
