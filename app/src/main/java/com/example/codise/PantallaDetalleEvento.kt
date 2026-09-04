@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
@@ -113,7 +114,11 @@ fun PantallaDetalleEvento(
 
                 Button(
                     onClick = {
-                        val gmmIntentUri = Uri.parse("geo:0,0?q=${Uri.encode(evento.ubicacion)}")
+                        val gmmIntentUri = if (evento.latitud != null && evento.longitud != null) {
+                            Uri.parse("geo:${evento.latitud},${evento.longitud}?q=${evento.latitud},${evento.longitud}(${Uri.encode(evento.titulo)})")
+                        } else {
+                            Uri.parse("geo:0,0?q=${Uri.encode(evento.ubicacion)}")
+                        }
                         val mapaIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                         mapaIntent.setPackage("com.google.android.apps.maps")
                         if (mapaIntent.resolveActivity(contexto.packageManager) != null) {
@@ -168,6 +173,9 @@ fun PantallaDetalleEvento(
             ElementoDetalle(icono = Icons.Default.CalendarMonth, etiqueta = "Fecha", valor = "${evento.fechaInicio.take(10)} al ${evento.fechaFin.take(10)}")
             if (evento.empresaNombre != null) {
                 ElementoDetalle(icono = Icons.Default.Person, etiqueta = "Organizado por", valor = evento.empresaNombre)
+            }
+            if (evento.cupoMaximo != null) {
+                ElementoDetalle(icono = Icons.Default.People, etiqueta = "Cupo Máximo", valor = "${evento.cupoMaximo} personas")
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = GrisClaro.copy(alpha = 0.5f))

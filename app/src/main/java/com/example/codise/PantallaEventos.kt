@@ -49,6 +49,7 @@ fun PantallaEventos(
             if (puedeSubir) {
                 FloatingActionButton(
                     onClick = alHacerClicEnSubir,
+                    modifier = Modifier.padding(bottom = 72.dp),
                     containerColor = GoldColor,
                     contentColor = Color.White
                 ) {
