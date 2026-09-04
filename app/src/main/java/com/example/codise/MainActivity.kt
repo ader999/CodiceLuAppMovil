@@ -223,7 +223,6 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
     Scaffold(
         topBar = {
             val tituloBarraSuperior = when (pantallaActual) {
-                "upload_event" -> "Subir Nuevo Evento"
                 else -> null
             }
             BarraSuperior(
@@ -446,7 +445,7 @@ fun AplicacionAutenticada(usuario: Usuario, token: String, alCerrarSesion: () ->
                             pantallaActual = "events"
                             viewModelEventos.reiniciarEstadoSubida()
                         },
-                        alSubir = { viewModelEventos.subirEvento(it) },
+                        alSubir = { solicitud, uriImagen -> viewModelEventos.subirEvento(solicitud, uriImagen) },
                         estaSubiendo = estaSubiendo,
                         subidaExitosa = subidaExitosa,
                         paddingSuperior = paddingSuperior

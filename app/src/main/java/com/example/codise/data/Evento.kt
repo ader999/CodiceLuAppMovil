@@ -19,6 +19,7 @@ data class Evento(
     val imagen: String?,
     val latitud: Double?,
     val longitud: Double?,
+    @SerializedName("esta_activo") val estaActivo: Boolean = true,
     @SerializedName("fecha_creacion") val fechaCreacion: String
 )
 
@@ -32,5 +33,8 @@ data class SolicitudEvento(
     val ubicacion: String,
     @SerializedName("precio_entrada") val precioEntrada: String = "0.00",
     @SerializedName("es_gratuito") val esGratuito: Boolean = true,
-    @SerializedName("cupo_maximo") val cupoMaximo: Int? = null
+    @SerializedName("cupo_maximo") val cupoMaximo: Int? = null,
+    val latitud: Double? = null,
+    val longitud: Double? = null,
+    @SerializedName("esta_activo") val estaActivo: Boolean = true
 )

@@ -80,6 +80,26 @@ interface ServicioApi {
         @Body evento: SolicitudEvento
     ): Response<Evento>
 
+    @Multipart
+    @POST("api/eventos/")
+    suspend fun crearEventoMultipart(
+        @Header("Authorization") token: String,
+        @Part("titulo") titulo: RequestBody,
+        @Part("descripcion") descripcion: RequestBody,
+        @Part("ciudad") ciudad: RequestBody,
+        @Part("empresa") empresa: RequestBody? = null,
+        @Part("fecha_inicio") fechaInicio: RequestBody,
+        @Part("fecha_fin") fechaFin: RequestBody,
+        @Part("ubicacion") ubicacion: RequestBody,
+        @Part("precio_entrada") precioEntrada: RequestBody,
+        @Part("es_gratuito") esGratuito: RequestBody,
+        @Part("cupo_maximo") cupoMaximo: RequestBody? = null,
+        @Part("latitud") latitud: RequestBody? = null,
+        @Part("longitud") longitud: RequestBody? = null,
+        @Part("esta_activo") estaActivo: RequestBody? = null,
+        @Part imagen: MultipartBody.Part? = null
+    ): Response<Evento>
+
     @POST("api/eventos/{id}/asistir/")
     suspend fun registrarAsistencia(
         @Header("Authorization") token: String,
