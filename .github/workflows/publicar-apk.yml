@@ -27,6 +27,11 @@ jobs:
       - name: Dar permisos de ejecución a Gradle Wrapper
         run: chmod +x gradlew
 
+      - name: Configurar Debug Keystore desde Secrets
+        run: |
+          mkdir -p ~/.android
+          echo "${{ secrets.DEBUG_KEYSTORE }}" | base64 -d > ~/.android/debug.keystore
+
       - name: Compilar APK (Debug)
         run: ./gradlew assembleDebug --stacktrace
 
