@@ -16,7 +16,8 @@ data class MensajeChat(
     val fecha: Long = System.currentTimeMillis(),
     val herramientas: List<HerramientaUtilizada>? = null,
     val modelo: String? = null,
-    val esError: Boolean = false
+    val esError: Boolean = false,
+    val puntosInteresIds: List<Int>? = null
 )
 
 enum class EmisorMensaje {
@@ -138,7 +139,8 @@ class ViewModelAsistente(aplicacion: Application) : AndroidViewModel(aplicacion)
                         emisor = EmisorMensaje.ASISTENTE,
                         texto = cuerpo.respuesta,
                         herramientas = cuerpo.herramientas_utilizadas,
-                        modelo = cuerpo.modelo_utilizado
+                        modelo = cuerpo.modelo_utilizado,
+                        puntosInteresIds = cuerpo.obtenerPuntosIds().ifEmpty { null }
                     )
                     _mensajes.value = _mensajes.value + mensajeAsistente
                 } else {

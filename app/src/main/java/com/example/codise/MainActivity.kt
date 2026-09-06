@@ -139,6 +139,8 @@ fun AplicacionAutenticada(
     val viewModelPublicaciones: ViewModelPublicaciones = viewModel()
     val viewModelAsistente: ViewModelAsistente = viewModel()
     val idsPuntosVisitados by viewModelPrincipal.idsPuntosVisitados.collectAsState()
+    val puntosVisitados by viewModelPrincipal.puntosVisitados.collectAsState()
+    val ciudades by viewModelPrincipal.ciudades
     val contexto = LocalContext.current
     val clienteUbicacion = remember { LocationServices.getFusedLocationProviderClient(contexto) }
 
@@ -424,6 +426,12 @@ fun AplicacionAutenticada(
                 },
                 alHacerClicEnSubirPublicacion = { pantallaActual = "upload_publication" },
                 alAlternarFormularioPerfil = { mostrarFormularioPerfil = !mostrarFormularioPerfil },
+                alReiniciarAsistente = {
+                    viewModelAsistente.reiniciarConversacion(
+                        mensajeBienvenida = cadenas.asistenteMensaje,
+                        idiomaCodigo = idiomaActual.codigo
+                    )
+                },
                 alHacerClicEnAtras = {
                     when (pantallaActual) {
                         "circuit_detail" -> pantallaActual = "circuits_and_poi"
@@ -623,11 +631,17 @@ fun AplicacionAutenticada(
                     )
                 }
                 "assistant" -> {
+                    val todosLosPuntos = remember(ciudades) {
+                        ciudades.flatMap { ciudad -> ciudad.circuitos.flatMap { it.puntosInteres } }
+                    }
                     PantallaAsistente(
                         viewModel = viewModelAsistente,
                         idiomaActual = idiomaActual,
                         paddingSuperior = paddingSuperior,
-                        alSolicitarUbicacion = { solicitarUbicacionAsistente() }
+                        alSolicitarUbicacion = { solicitarUbicacionAsistente() },
+                        todosLosPuntos = todosLosPuntos,
+                        puntosVisitados = puntosVisitados,
+                        alAlternarVisitado = { puntoId -> solicitarUbicacionYMarcar(puntoId) }
                     )
                 }
             }
@@ -933,6 +947,7 @@ fun BarraNavegacionInferior(
     alHacerClicEnExplorar: () -> Unit = {},
     alHacerClicEnSubirPublicacion: () -> Unit = {},
     alAlternarFormularioPerfil: () -> Unit = {},
+    alReiniciarAsistente: () -> Unit = {},
     alHacerClicEnAtras: () -> Unit = {}
 ) {
     val cadenas = LocalCadenas.current
@@ -1034,6 +1049,9 @@ fun BarraNavegacionInferior(
                                 "profile" -> {
                                     alAlternarFormularioPerfil()
                                 }
+                                "assistant" -> {
+                                    alReiniciarAsistente()
+                                }
                                 else -> {
                                     alHacerClicEnExplorar()
                                 }
@@ -1047,6 +1065,7 @@ fun BarraNavegacionInferior(
                             "events" -> if (pestanaSeleccionada == 2) Icons.Default.CalendarMonth else Icons.AutoMirrored.Filled.List
                             "circuits_and_poi" -> if (pestanaSeleccionada == 0) Icons.Default.LocationOn else Icons.Default.Map
                             "profile" -> if (mostrarFormularioPerfil) Icons.Default.Person else Icons.Default.EditNote
+                            "assistant" -> Icons.Default.Refresh
                             else -> Icons.Default.PhotoLibrary
                         },
                         contentDescription = when (pantallaActual) {
@@ -1054,9 +1073,10 @@ fun BarraNavegacionInferior(
                             "events" -> cadenas.eventos
                             "circuits_and_poi" -> if (pestanaSeleccionada == 0) cadenas.puntosDeInteres else cadenas.circuitos
                             "profile" -> if (mostrarFormularioPerfil) cadenas.perfil else cadenas.editarPerfil
+                            "assistant" -> cadenas.asistenteNuevaConversacion
                             else -> cadenas.publicaciones
                         },
-                        tint = if (pantallaActual in listOf("publications", "circuits_and_poi", "profile")) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        tint = if (pantallaActual in listOf("publications", "circuits_and_poi", "profile", "assistant")) GoldColor else GoldColor.copy(alpha = 0.5f),
                         modifier = Modifier.size(28.dp)
                     )
                 }

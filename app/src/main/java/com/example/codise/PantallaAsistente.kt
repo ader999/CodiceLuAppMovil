@@ -35,17 +35,31 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
 import com.example.codise.data.HerramientaUtilizada
 import com.example.codise.data.IdiomaApp
+import com.example.codise.data.PuntoInteres
+import com.example.codise.data.local.PuntoVisitado
 import com.example.codise.ui.theme.*
 import com.example.codise.utils.LocalCadenas
+import com.example.codise.utils.aUrlCompleta
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,7 +69,10 @@ fun PantallaAsistente(
     viewModel: ViewModelAsistente,
     idiomaActual: IdiomaApp,
     paddingSuperior: Dp = 0.dp,
-    alSolicitarUbicacion: () -> Unit = {}
+    alSolicitarUbicacion: () -> Unit = {},
+    todosLosPuntos: List<PuntoInteres> = emptyList(),
+    puntosVisitados: List<PuntoVisitado> = emptyList(),
+    alAlternarVisitado: (Int) -> Unit = {}
 ) {
     val cadenas = LocalCadenas.current
     val contexto = LocalContext.current
@@ -67,6 +84,7 @@ fun PantallaAsistente(
     val ubicacionGps by viewModel.ubicacionGps
 
     var textoInput by remember { mutableStateOf("") }
+    var puntoSeleccionadoParaDetalle by remember { mutableStateOf<PuntoInteres?>(null) }
 
     // Inicializar con mensaje de bienvenida en el idioma seleccionado
     LaunchedEffect(idiomaActual) {
@@ -102,18 +120,6 @@ fun PantallaAsistente(
             .padding(top = paddingSuperior)
             .imePadding()
     ) {
-        // Tarjeta de Cabecera: Presentación de Eduardo
-        TarjetaCabeceraEduardo(
-            ubicacionActiva = ubicacionGps != null,
-            alReiniciar = {
-                viewModel.reiniciarConversacion(
-                    mensajeBienvenida = cadenas.asistenteMensaje,
-                    idiomaCodigo = idiomaActual.codigo
-                )
-            },
-            alHacerClicEnUbicacion = alSolicitarUbicacion
-        )
-
         // Lista de Mensajes y Sugerencias
         Box(
             modifier = Modifier
@@ -140,6 +146,9 @@ fun PantallaAsistente(
                 items(mensajes, key = { it.id }) { mensaje ->
                     BurbujaMensaje(
                         mensaje = mensaje,
+                        todosLosPuntos = todosLosPuntos,
+                        puntosVisitados = puntosVisitados,
+                        alSeleccionarPuntoDetalle = { punto -> puntoSeleccionadoParaDetalle = punto },
                         alCopiar = { texto ->
                             val clipboard = contexto.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("Eduardo", texto)
@@ -178,111 +187,22 @@ fun PantallaAsistente(
                 .padding(bottom = 70.dp) // Espacio para la barra de navegación inferior flotante
         )
     }
-}
 
-@Composable
-fun TarjetaCabeceraEduardo(
-    ubicacionActiva: Boolean,
-    alReiniciar: () -> Unit,
-    alHacerClicEnUbicacion: () -> Unit
-) {
-    val cadenas = LocalCadenas.current
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = BlancoBase),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar de Eduardo (Guardabarranco)
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(AzulPetroleo)
-                    .border(2.dp, GoldColor, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.iconasistente),
-                    contentDescription = cadenas.asistenteTitulo,
-                    modifier = Modifier.size(34.dp),
-                    contentScale = ContentScale.Fit
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Textos: Nombre, Rol y Estado
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = cadenas.asistenteTitulo,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AzulPetroleo
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF4CAF50))
-                    )
-                }
-                Text(
-                    text = cadenas.asistenteSubtitulo,
-                    fontSize = 12.sp,
-                    color = AzulPetroleo.copy(alpha = 0.75f),
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "Gemini IA • Datos en tiempo real",
-                    fontSize = 10.sp,
-                    color = GoldColor,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            // Indicador de GPS y botón de Nueva Conversación
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = alHacerClicEnUbicacion,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = if (ubicacionActiva) Icons.Default.GpsFixed else Icons.Default.LocationSearching,
-                        contentDescription = if (ubicacionActiva) cadenas.asistenteUbicacionActiva else cadenas.asistenteUbicacionDesactivada,
-                        tint = if (ubicacionActiva) GoldColor else GrisClaro,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = alReiniciar,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = cadenas.asistenteNuevaConversacion,
-                        tint = AzulPetroleo,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-        }
+    // Modal de Detalles Completos del Punto de Interés seleccionado
+    if (puntoSeleccionadoParaDetalle != null) {
+        val punto = puntoSeleccionadoParaDetalle!!
+        val registroVisita = puntosVisitados.find { it.puntoInteresId == punto.id }
+        DialogoDetallePuntoInteres(
+            punto = punto,
+            estaVisitado = registroVisita != null,
+            estaValidado = registroVisita?.estaValidado == true,
+            alAlternarVisitado = { alAlternarVisitado(punto.id) },
+            alCerrar = { puntoSeleccionadoParaDetalle = null }
+        )
     }
 }
+
+
 
 @Composable
 fun SugerenciasRapidas(
@@ -349,12 +269,37 @@ fun SugerenciasRapidas(
 fun BurbujaMensaje(
     mensaje: MensajeChat,
     alCopiar: (String) -> Unit,
-    alReintentar: () -> Unit
+    alReintentar: () -> Unit,
+    todosLosPuntos: List<PuntoInteres> = emptyList(),
+    puntosVisitados: List<PuntoVisitado> = emptyList(),
+    alSeleccionarPuntoDetalle: (PuntoInteres) -> Unit = {}
 ) {
     val cadenas = LocalCadenas.current
     val esUsuario = mensaje.emisor == EmisorMensaje.USUARIO
     val formatoHora = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val horaTexto = remember(mensaje.fecha) { formatoHora.format(Date(mensaje.fecha)) }
+
+    // Identificar qué puntos de interés corresponden a este mensaje (por IDs del backend o por coincidencia en texto)
+    val puntosDelMensaje = remember(mensaje, todosLosPuntos) {
+        if (esUsuario || mensaje.esError || todosLosPuntos.isEmpty()) {
+            emptyList()
+        } else {
+            val porIds = mensaje.puntosInteresIds?.mapNotNull { id ->
+                todosLosPuntos.find { it.id == id }
+            } ?: emptyList()
+
+            if (porIds.isNotEmpty()) {
+                porIds.distinctBy { it.id }
+            } else {
+                todosLosPuntos.filter { punto ->
+                    val nombreLimpio = punto.nombre.trim()
+                    if (nombreLimpio.length >= 4) {
+                        mensaje.texto.contains(nombreLimpio, ignoreCase = true)
+                    } else false
+                }.distinctBy { it.id }
+            }
+        }
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -382,10 +327,11 @@ fun BurbujaMensaje(
         }
 
         Column(
-            modifier = Modifier.widthIn(max = 310.dp),
+            modifier = if (esUsuario) Modifier.widthIn(max = 300.dp) else Modifier.weight(1f),
             horizontalAlignment = if (esUsuario) Alignment.End else Alignment.Start
         ) {
             Surface(
+                modifier = Modifier.widthIn(max = 315.dp),
                 shape = if (esUsuario) {
                     RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp)
                 } else {
@@ -428,13 +374,10 @@ fun BurbujaMensaje(
                             )
                         }
                     } else {
-                        // Renderizado enriquecido con soporte de negritas en Markdown (**texto**)
-                        val textoAnotado = formatearMarkdown(mensaje.texto, esUsuario)
-                        Text(
-                            text = textoAnotado,
-                            color = if (esUsuario) BlancoBase else NegroPuro,
-                            fontSize = 14.5.sp,
-                            lineHeight = 20.sp
+                        // Renderizado enriquecido con soporte completo de Markdown (encabezados, listas, divisores, negritas)
+                        ContenidoMensajeMarkdown(
+                            texto = mensaje.texto,
+                            esUsuario = esUsuario
                         )
                     }
 
@@ -484,6 +427,506 @@ fun BurbujaMensaje(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+
+            // Si Eduardo recomendó lugares, mostrar carrusel de tarjetas previas interactivas
+            if (!esUsuario && !mensaje.esError && puntosDelMensaje.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 2.dp, bottom = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Place,
+                        contentDescription = null,
+                        tint = GoldColor,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (puntosDelMensaje.size == 1) cadenas.puntosDeInteres else cadenas.puntosDelRecorrido,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AzulPetroleo
+                    )
+                }
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(puntosDelMensaje, key = { it.id }) { punto ->
+                        val registroVisita = puntosVisitados.find { it.puntoInteresId == punto.id }
+                        val estaVisitado = registroVisita != null
+                        val estaValidado = registroVisita?.estaValidado == true
+
+                        TarjetaPreviaPuntoAsistente(
+                            punto = punto,
+                            estaVisitado = estaVisitado,
+                            estaValidado = estaValidado,
+                            alHacerClic = { alSeleccionarPuntoDetalle(punto) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Mini-tarjeta visual previa para cada punto de interés recomendado por Eduardo
+ */
+@Composable
+fun TarjetaPreviaPuntoAsistente(
+    punto: PuntoInteres,
+    estaVisitado: Boolean,
+    estaValidado: Boolean,
+    alHacerClic: () -> Unit
+) {
+    val cadenas = LocalCadenas.current
+    val contexto = LocalContext.current
+    val primeraImagen = punto.galeria.firstOrNull()?.imagen?.aUrlCompleta()
+
+    Card(
+        modifier = Modifier
+            .width(245.dp)
+            .clickable { alHacerClic() },
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = BlancoBase),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(1.dp, GoldColor.copy(alpha = 0.35f))
+    ) {
+        Column {
+            // Portada con tipo e indicador de visita
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(115.dp)
+            ) {
+                if (primeraImagen != null) {
+                    AsyncImage(
+                        model = primeraImagen,
+                        contentDescription = punto.nombre,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(AzulPetroleo.copy(alpha = 0.08f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            tint = AzulPetroleo.copy(alpha = 0.35f),
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                }
+
+                // Badge de Tipo en esquina superior derecha
+                Surface(
+                    color = when (punto.tipo.lowercase()) {
+                        "historico" -> Color(0xFFFFF3E0)
+                        "cultural" -> Color(0xFFE1F5FE)
+                        else -> Color(0xFFF3E5F5)
+                    },
+                    shape = RoundedCornerShape(bottomStart = 8.dp),
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    Text(
+                        text = punto.tipo,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when (punto.tipo.lowercase()) {
+                            "historico" -> Color(0xFFE65100)
+                            "cultural" -> Color(0xFF01579B)
+                            else -> Color(0xFF4A148C)
+                        }
+                    )
+                }
+
+                // Badge de Visitado en esquina superior izquierda si aplica
+                if (estaVisitado) {
+                    Surface(
+                        color = if (estaValidado) GoldColor else Color(0xFF4CAF50),
+                        shape = RoundedCornerShape(bottomEnd = 8.dp),
+                        modifier = Modifier.align(Alignment.TopStart)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (estaValidado) Icons.Default.Verified else Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = if (estaValidado) cadenas.verificado else cadenas.visitado,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Información del Punto
+            Column(modifier = Modifier.padding(10.dp)) {
+                Text(
+                    text = punto.nombre,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AzulPetroleo,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 17.sp
+                )
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = GoldColor,
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = punto.circuitoNombre,
+                        fontSize = 11.sp,
+                        color = GoldColor,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Fila de Botones: Ver detalles, Cómo llegar (ajustados con proporciones limpias)
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Botón Ver Detalles
+                        OutlinedButton(
+                            onClick = alHacerClic,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(34.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            border = BorderStroke(1.dp, AzulPetroleo)
+                        ) {
+                            Text(
+                                text = cadenas.verMas,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AzulPetroleo,
+                                maxLines = 1
+                            )
+                        }
+
+                        // Botón Cómo llegar
+                        FilledIconButton(
+                            onClick = {
+                                val uri = Uri.parse("geo:0,0?q=${punto.latitud},${punto.longitud}(${punto.nombre})")
+                                val intento = Intent(Intent.ACTION_VIEW, uri)
+                                intento.setPackage("com.google.android.apps.maps")
+                                try {
+                                    contexto.startActivity(intento)
+                                } catch (e: Exception) {
+                                    val uriWeb = Uri.parse("https://www.google.com/maps/search/?api=1&query=${punto.latitud},${punto.longitud}")
+                                    contexto.startActivity(Intent(Intent.ACTION_VIEW, uriWeb))
+                                }
+                            },
+                            modifier = Modifier.size(34.dp),
+                            shape = CircleShape,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = GoldColor,
+                                contentColor = BlancoBase
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Directions,
+                                contentDescription = cadenas.comoLlegar,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Diálogo modal con la tarjeta completa de detalles del Punto de Interés (carrusel de fotos, descripción, datos históricos y cómo llegar/visitar)
+ */
+@Composable
+fun DialogoDetallePuntoInteres(
+    punto: PuntoInteres,
+    estaVisitado: Boolean,
+    estaValidado: Boolean,
+    alAlternarVisitado: () -> Unit,
+    alCerrar: () -> Unit
+) {
+    val cadenas = LocalCadenas.current
+    val contexto = LocalContext.current
+
+    Dialog(
+        onDismissRequest = alCerrar,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f))
+                .clickable { alCerrar() },
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .fillMaxHeight(0.85f)
+                    .clickable(enabled = false) {},
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = BlancoBase),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        // Carrusel de imágenes
+                        if (punto.galeria.isNotEmpty()) {
+                            CarruselGaleria(galeria = punto.galeria)
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .background(AzulPetroleo.copy(alpha = 0.08f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Place,
+                                    contentDescription = null,
+                                    tint = AzulPetroleo.copy(alpha = 0.35f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            // Título y Tipo
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = punto.nombre,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AzulPetroleo,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = when (punto.tipo.lowercase()) {
+                                        "historico" -> Color(0xFFFFF3E0)
+                                        "cultural" -> Color(0xFFE1F5FE)
+                                        else -> Color(0xFFF3E5F5)
+                                    },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = punto.tipo,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = when (punto.tipo.lowercase()) {
+                                            "historico" -> Color(0xFFE65100)
+                                            "cultural" -> Color(0xFF01579B)
+                                            else -> Color(0xFF4A148C)
+                                        }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            // Circuito
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = GoldColor,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = punto.circuitoNombre,
+                                    fontSize = 12.5.sp,
+                                    color = GoldColor,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Descripción
+                            Text(
+                                text = punto.descripcion,
+                                fontSize = 14.sp,
+                                color = NegroPuro.copy(alpha = 0.75f),
+                                lineHeight = 20.sp
+                            )
+
+                            // Datos Históricos
+                            if (punto.datosHistoricos.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.HistoryEdu,
+                                        contentDescription = null,
+                                        tint = AzulPetroleo,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Dato Histórico",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AzulPetroleo
+                                    )
+                                }
+
+                                punto.datosHistoricos.forEach { datoHistorico ->
+                                    Column(modifier = Modifier.padding(top = 8.dp)) {
+                                        Text(
+                                            text = datoHistorico.titulo,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = NegroPuro
+                                        )
+                                        Text(
+                                            text = datoHistorico.contenido,
+                                            fontSize = 12.sp,
+                                            color = NegroPuro.copy(alpha = 0.65f),
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            // Botones de Acción
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                // Botón Cómo llegar
+                                Button(
+                                    onClick = {
+                                        val uri = Uri.parse("geo:0,0?q=${punto.latitud},${punto.longitud}(${punto.nombre})")
+                                        val intento = Intent(Intent.ACTION_VIEW, uri)
+                                        intento.setPackage("com.google.android.apps.maps")
+                                        try {
+                                            contexto.startActivity(intento)
+                                        } catch (e: Exception) {
+                                            val uriWeb = Uri.parse("https://www.google.com/maps/search/?api=1&query=${punto.latitud},${punto.longitud}")
+                                            contexto.startActivity(Intent(Intent.ACTION_VIEW, uriWeb))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(vertical = 12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Directions,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = cadenas.comoLlegar,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                // Botón Marcar Visita
+                                Button(
+                                    onClick = alAlternarVisitado,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (estaValidado) GoldColor
+                                        else if (estaVisitado) Color(0xFF4CAF50)
+                                        else GoldColor
+                                    ),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (estaValidado) Icons.Default.Verified
+                                        else if (estaVisitado) Icons.Default.Check
+                                        else Icons.Default.AddLocationAlt,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (estaValidado) cadenas.verificado
+                                        else if (estaVisitado) cadenas.visitado
+                                        else cadenas.yaLoVisite,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Botón circular de Cerrar en la esquina superior derecha
+                    IconButton(
+                        onClick = alCerrar,
+                        modifier = Modifier
+                            .padding(10.dp)
+                            .align(Alignment.TopEnd)
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.55f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = cadenas.cerrar,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
@@ -612,98 +1055,428 @@ fun BarraEntradaMensaje(
         shadowElevation = 4.dp,
         border = BorderStroke(1.dp, GoldColor.copy(alpha = 0.35f))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icono para activar GPS
-            IconButton(
-                onClick = alSolicitarUbicacion,
-                modifier = Modifier.size(38.dp)
-            ) {
-                Icon(
-                    imageVector = if (tieneUbicacion) Icons.Default.LocationOn else Icons.Default.LocationOff,
-                    contentDescription = if (tieneUbicacion) cadenas.asistenteUbicacionActiva else cadenas.asistenteUbicacionDesactivada,
-                    tint = if (tieneUbicacion) GoldColor else Color.Gray.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Campo de Texto
-            TextField(
-                value = texto,
-                onValueChange = alCambiarTexto,
-                placeholder = {
-                    Text(
-                        text = cadenas.asistentePreguntale,
-                        color = Color.Gray,
-                        fontSize = 14.sp
-                    )
-                },
-                modifier = Modifier.weight(1f),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                    focusedTextColor = NegroPuro,
-                    unfocusedTextColor = NegroPuro
-                ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { alEnviar() }),
-                maxLines = 4
-            )
-
-            // Botón Enviar
-            val puedeEnviar = texto.isNotBlank() && !estaEscribiendo
-            IconButton(
-                onClick = alEnviar,
-                enabled = puedeEnviar,
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            Row(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(if (puedeEnviar) GoldColor else Color.LightGray.copy(alpha = 0.4f))
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = cadenas.publicar,
-                    tint = if (puedeEnviar) BlancoBase else Color.Gray,
-                    modifier = Modifier.size(18.dp)
+                // Icono para activar GPS
+                IconButton(
+                    onClick = alSolicitarUbicacion,
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(
+                        imageVector = if (tieneUbicacion) Icons.Default.LocationOn else Icons.Default.LocationOff,
+                        contentDescription = if (tieneUbicacion) cadenas.asistenteUbicacionActiva else cadenas.asistenteUbicacionDesactivada,
+                        tint = if (tieneUbicacion) GoldColor else Color.Gray.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Campo de Texto
+                TextField(
+                    value = texto,
+                    onValueChange = alCambiarTexto,
+                    placeholder = {
+                        Text(
+                            text = cadenas.asistentePreguntale,
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        focusedTextColor = NegroPuro,
+                        unfocusedTextColor = NegroPuro
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { alEnviar() }),
+                    maxLines = 4
                 )
+
+                // Botón Enviar
+                val puedeEnviar = texto.isNotBlank() && !estaEscribiendo
+                IconButton(
+                    onClick = alEnviar,
+                    enabled = puedeEnviar,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(if (puedeEnviar) GoldColor else Color.LightGray.copy(alpha = 0.4f))
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = cadenas.publicar,
+                        tint = if (puedeEnviar) BlancoBase else Color.Gray,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * Función utilitaria para analizar y estilizar formato markdown simple (**negrita**)
+ * Tipos de bloques reconocidos para la estructura markdown
+ */
+sealed class ElementoMarkdown {
+    data object Separador : ElementoMarkdown()
+    data class Encabezado(val nivel: Int, val texto: String) : ElementoMarkdown()
+    data class ElementoLista(val esNumerada: Boolean, val prefijo: String, val texto: String) : ElementoMarkdown()
+    data class Cita(val texto: String) : ElementoMarkdown()
+    data class Parrafo(val texto: String) : ElementoMarkdown()
+}
+
+/**
+ * Parsea el texto en líneas identificando encabezados (###), listas (*, -, 1.), citas (>) y separadores (---)
+ */
+fun parsearLineasMarkdown(texto: String): List<ElementoMarkdown> {
+    val lineas = texto.lines()
+    val resultado = mutableListOf<ElementoMarkdown>()
+    val parrafoAcumulado = StringBuilder()
+
+    fun flushParrafo() {
+        val contenido = parrafoAcumulado.toString().trim()
+        if (contenido.isNotEmpty()) {
+            resultado.add(ElementoMarkdown.Parrafo(contenido))
+        }
+        parrafoAcumulado.clear()
+    }
+
+    for (linea in lineas) {
+        val trimLinea = linea.trim()
+
+        if (trimLinea.isEmpty()) {
+            flushParrafo()
+            continue
+        }
+
+        // Comprobar si es un separador horizontal: ---, ***, ___ (al menos 3 caracteres repetidos)
+        if (trimLinea.matches(Regex("^([-*_])\\1{2,}$"))) {
+            flushParrafo()
+            if (resultado.lastOrNull() !is ElementoMarkdown.Separador) {
+                resultado.add(ElementoMarkdown.Separador)
+            }
+            continue
+        }
+
+        // Comprobar encabezados: #, ##, ###, ####, etc.
+        val headingMatch = Regex("^(#{1,6})\\s+(.*)$").find(trimLinea)
+        if (headingMatch != null) {
+            flushParrafo()
+            val nivel = headingMatch.groupValues[1].length
+            val textoEncabezado = headingMatch.groupValues[2].trim()
+            resultado.add(ElementoMarkdown.Encabezado(nivel, textoEncabezado))
+            continue
+        }
+
+        // Comprobar elementos de lista no ordenada: *, -, + seguido de espacio
+        val listaNoOrdenadaMatch = Regex("^([*\\-+])\\s+(.*)$").find(trimLinea)
+        if (listaNoOrdenadaMatch != null) {
+            flushParrafo()
+            val textoItem = listaNoOrdenadaMatch.groupValues[2].trim()
+            resultado.add(ElementoMarkdown.ElementoLista(esNumerada = false, prefijo = "•", texto = textoItem))
+            continue
+        }
+
+        // Comprobar elementos de lista numerada: 1., 2., 1), etc.
+        val listaNumeradaMatch = Regex("^(\\d+)[.)]\\s+(.*)$").find(trimLinea)
+        if (listaNumeradaMatch != null) {
+            flushParrafo()
+            val numero = listaNumeradaMatch.groupValues[1]
+            val textoItem = listaNumeradaMatch.groupValues[2].trim()
+            resultado.add(ElementoMarkdown.ElementoLista(esNumerada = true, prefijo = "$numero.", texto = textoItem))
+            continue
+        }
+
+        // Comprobar citas tipo blockquote: > texto
+        val citaMatch = Regex("^>\\s*(.*)$").find(trimLinea)
+        if (citaMatch != null) {
+            flushParrafo()
+            val textoCita = citaMatch.groupValues[1].trim()
+            resultado.add(ElementoMarkdown.Cita(textoCita))
+            continue
+        }
+
+        // Si es una línea de texto normal, acumular
+        if (parrafoAcumulado.isNotEmpty()) {
+            parrafoAcumulado.append("\n")
+        }
+        parrafoAcumulado.append(trimLinea)
+    }
+
+    flushParrafo()
+
+    // Eliminar separadores superfluos al inicio o al final
+    while (resultado.isNotEmpty() && resultado.first() is ElementoMarkdown.Separador) {
+        resultado.removeAt(0)
+    }
+    while (resultado.isNotEmpty() && resultado.last() is ElementoMarkdown.Separador) {
+        resultado.removeAt(resultado.size - 1)
+    }
+
+    return resultado
+}
+
+/**
+ * Convierte texto con formato markdown en línea (negritas, cursivas, monoespaciado, enlaces) en AnnotatedString
+ */
+fun construirTextoAnotadoMarkdown(
+    texto: String,
+    esUsuario: Boolean,
+    esEncabezado: Boolean = false
+): AnnotatedString {
+    return buildAnnotatedString {
+        val colorNegrita = if (esUsuario) BlancoBase else AzulPetroleo
+        val colorNormal = if (esUsuario) BlancoBase else if (esEncabezado) AzulPetroleo else NegroPuro
+
+        val regexToken = Regex(
+            """(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|__(.+?)__|(?<!\w)\*(.+?)\*(?!\w)|(?<!\w)_(.+?)_(?!\w)|`(.+?)`|\[(.+?)]\((.+?)\))"""
+        )
+
+        var indiceActual = 0
+        val coincidencias = regexToken.findAll(texto)
+
+        for (match in coincidencias) {
+            if (match.range.first > indiceActual) {
+                withStyle(SpanStyle(color = colorNormal)) {
+                    append(texto.substring(indiceActual, match.range.first))
+                }
+            }
+
+            val valor = match.value
+            when {
+                // ***negrita cursiva***
+                valor.startsWith("***") && valor.endsWith("***") && valor.length >= 6 -> {
+                    val contenido = valor.substring(3, valor.length - 3)
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Italic,
+                            color = colorNegrita
+                        )
+                    ) {
+                        append(contenido)
+                    }
+                }
+                // **negrita**
+                valor.startsWith("**") && valor.endsWith("**") && valor.length >= 4 -> {
+                    val contenido = valor.substring(2, valor.length - 2)
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = FontWeight.Bold,
+                            color = colorNegrita
+                        )
+                    ) {
+                        append(contenido)
+                    }
+                }
+                // __negrita__
+                valor.startsWith("__") && valor.endsWith("__") && valor.length >= 4 -> {
+                    val contenido = valor.substring(2, valor.length - 2)
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = FontWeight.Bold,
+                            color = colorNegrita
+                        )
+                    ) {
+                        append(contenido)
+                    }
+                }
+                // *cursiva*
+                valor.startsWith("*") && valor.endsWith("*") && valor.length >= 2 -> {
+                    val contenido = valor.substring(1, valor.length - 1)
+                    withStyle(
+                        SpanStyle(
+                            fontStyle = FontStyle.Italic,
+                            color = colorNormal
+                        )
+                    ) {
+                        append(contenido)
+                    }
+                }
+                // _cursiva_
+                valor.startsWith("_") && valor.endsWith("_") && valor.length >= 2 -> {
+                    val contenido = valor.substring(1, valor.length - 1)
+                    withStyle(
+                        SpanStyle(
+                            fontStyle = FontStyle.Italic,
+                            color = colorNormal
+                        )
+                    ) {
+                        append(contenido)
+                    }
+                }
+                // `código`
+                valor.startsWith("`") && valor.endsWith("`") && valor.length >= 2 -> {
+                    val contenido = valor.substring(1, valor.length - 1)
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = FontFamily.Monospace,
+                            background = if (esUsuario) Color(0x33FFFFFF) else Color(0x14000000),
+                            color = colorNormal
+                        )
+                    ) {
+                        append(" $contenido ")
+                    }
+                }
+                // [texto](url)
+                valor.startsWith("[") && valor.contains("](") && valor.endsWith(")") -> {
+                    val textoEnlace = valor.substringAfter("[").substringBefore("](")
+                    withStyle(
+                        SpanStyle(
+                            color = GoldColor,
+                            textDecoration = TextDecoration.Underline,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    ) {
+                        append(textoEnlace)
+                    }
+                }
+                else -> {
+                    withStyle(SpanStyle(color = colorNormal)) {
+                        append(valor)
+                    }
+                }
+            }
+
+            indiceActual = match.range.last + 1
+        }
+
+        if (indiceActual < texto.length) {
+            withStyle(SpanStyle(color = colorNormal)) {
+                append(texto.substring(indiceActual))
+            }
+        }
+    }
+}
+
+/**
+ * Renderizador de mensajes con formato Markdown completo para Eduardo y el usuario
+ */
+@Composable
+fun ContenidoMensajeMarkdown(
+    texto: String,
+    esUsuario: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val elementos = remember(texto) { parsearLineasMarkdown(texto) }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        elementos.forEach { elemento ->
+            when (elemento) {
+                is ElementoMarkdown.Separador -> {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        thickness = 0.8.dp,
+                        color = if (esUsuario) BlancoBase.copy(alpha = 0.3f) else AzulPetroleo.copy(alpha = 0.18f)
+                    )
+                }
+                is ElementoMarkdown.Encabezado -> {
+                    val tamanoFuente = when (elemento.nivel) {
+                        1 -> 17.sp
+                        2 -> 16.sp
+                        3 -> 15.sp
+                        else -> 14.5.sp
+                    }
+                    Text(
+                        text = construirTextoAnotadoMarkdown(
+                            texto = elemento.texto,
+                            esUsuario = esUsuario,
+                            esEncabezado = true
+                        ),
+                        color = if (esUsuario) BlancoBase else AzulPetroleo,
+                        fontSize = tamanoFuente,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = (tamanoFuente.value + 5).sp,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                    )
+                }
+                is ElementoMarkdown.ElementoLista -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 1.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            text = if (elemento.esNumerada) "${elemento.prefijo} " else "• ",
+                            color = if (esUsuario) BlancoBase.copy(alpha = 0.9f) else GoldColor,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 20.sp
+                        )
+                        Text(
+                            text = construirTextoAnotadoMarkdown(
+                                texto = elemento.texto,
+                                esUsuario = esUsuario
+                            ),
+                            color = if (esUsuario) BlancoBase else NegroPuro,
+                            fontSize = 14.5.sp,
+                            lineHeight = 20.sp,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
+                }
+                is ElementoMarkdown.Cita -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(22.dp)
+                                .background(GoldColor, RoundedCornerShape(2.dp))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = construirTextoAnotadoMarkdown(elemento.texto, esUsuario),
+                            color = if (esUsuario) BlancoBase.copy(alpha = 0.85f) else NegroPuro.copy(alpha = 0.85f),
+                            fontSize = 14.sp,
+                            fontStyle = FontStyle.Italic,
+                            lineHeight = 19.sp
+                        )
+                    }
+                }
+                is ElementoMarkdown.Parrafo -> {
+                    Text(
+                        text = construirTextoAnotadoMarkdown(
+                            texto = elemento.texto,
+                            esUsuario = esUsuario
+                        ),
+                        color = if (esUsuario) BlancoBase else NegroPuro,
+                        fontSize = 14.5.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Función utilitaria para analizar y estilizar formato markdown simple
  */
 @Composable
 fun formatearMarkdown(texto: String, esUsuario: Boolean): AnnotatedString {
     return remember(texto, esUsuario) {
-        buildAnnotatedString {
-            val partes = texto.split("**")
-            var esNegrita = false
-            for (parte in partes) {
-                if (esNegrita) {
-                    withStyle(
-                        SpanStyle(
-                            fontWeight = FontWeight.Bold,
-                            color = if (esUsuario) BlancoBase else AzulPetroleo
-                        )
-                    ) {
-                        append(parte)
-                    }
-                } else {
-                    append(parte)
-                }
-                esNegrita = !esNegrita
-            }
-        }
+        construirTextoAnotadoMarkdown(texto, esUsuario)
     }
 }
 
@@ -717,12 +1490,7 @@ fun VistaPreviaPantallaAsistente() {
                 .background(Celeste)
                 .padding(12.dp)
         ) {
-            TarjetaCabeceraEduardo(
-                ubicacionActiva = true,
-                alReiniciar = {},
-                alHacerClicEnUbicacion = {}
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+
             SugerenciasRapidas(alSeleccionarSugerencia = {})
             Spacer(modifier = Modifier.height(12.dp))
             BurbujaMensaje(
