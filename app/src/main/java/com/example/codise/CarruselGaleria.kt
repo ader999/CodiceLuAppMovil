@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,17 +31,28 @@ import com.example.codise.utils.aUrlCompleta
 @Composable
 fun CarruselGaleria(
     galeria: List<ItemGaleria>,
-    alHacerClicEnElemento: ((ItemGaleria) -> Unit)? = null
+    modifier: Modifier = Modifier,
+    alHacerClicEnElemento: ((ItemGaleria) -> Unit)? = null,
+    alHacerClicEnVideo: ((ItemGaleria) -> Unit)? = null,
+    alHacerClicEnImagen: ((List<String>, Int) -> Unit)? = null
 ) {
     if (galeria.isEmpty()) return
 
     val estadoPaginador = rememberPagerState(pageCount = { galeria.size })
     val contexto = LocalContext.current
 
+    val imagenesUrls = remember(galeria) {
+        galeria.filter { it.tipo != "Video" || it.imagen != null }
+            .mapNotNull { it.imagen?.aUrlCompleta() }
+    }
+    var mostrarVistaPrevia by remember { mutableStateOf(false) }
+    var indiceInicialVistaPrevia by remember { mutableIntStateOf(0) }
+
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(200.dp)
+            .clip(RoundedCornerShape(12.dp))
     ) {
         HorizontalPager(
             state = estadoPaginador,
@@ -57,11 +70,30 @@ fun CarruselGaleria(
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable {
-                        if (alHacerClicEnElemento != null) {
-                            alHacerClicEnElemento(elemento)
-                        } else if (elemento.tipo == "Video" && elemento.videoUrl != null) {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(elemento.videoUrl))
-                            contexto.startActivity(intent)
+                        if (elemento.tipo == "Video" && elemento.videoUrl != null) {
+                            if (alHacerClicEnVideo != null) {
+                                alHacerClicEnVideo(elemento)
+                            } else if (alHacerClicEnElemento != null) {
+                                alHacerClicEnElemento(elemento)
+                            } else {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(elemento.videoUrl))
+                                contexto.startActivity(intent)
+                            }
+                        } else {
+                            val urlActual = elemento.imagen?.aUrlCompleta()
+                            if (urlActual != null) {
+                                val indice = imagenesUrls.indexOf(urlActual).coerceAtLeast(0)
+                                if (alHacerClicEnImagen != null) {
+                                    alHacerClicEnImagen(imagenesUrls, indice)
+                                } else if (alHacerClicEnElemento != null) {
+                                    alHacerClicEnElemento(elemento)
+                                } else {
+                                    indiceInicialVistaPrevia = indice
+                                    mostrarVistaPrevia = true
+                                }
+                            } else {
+                                alHacerClicEnElemento?.invoke(elemento)
+                            }
                         }
                     }
             ) {
@@ -103,6 +135,22 @@ fun CarruselGaleria(
                             modifier = Modifier.size(48.dp)
                         )
                     }
+                } else if (imagenAMostrar != null) {
+                    // Indicador sutil de que la imagen se puede ampliar
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                            .padding(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ZoomIn,
+                            contentDescription = "Ampliar imagen",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
@@ -132,5 +180,13 @@ fun CarruselGaleria(
                 }
             }
         }
+    }
+
+    if (mostrarVistaPrevia && imagenesUrls.isNotEmpty()) {
+        DialogoVistaPreviaImagen(
+            imagenes = imagenesUrls,
+            paginaInicial = indiceInicialVistaPrevia,
+            alCerrar = { mostrarVistaPrevia = false }
+        )
     }
 }

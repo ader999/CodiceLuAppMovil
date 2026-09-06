@@ -25,7 +25,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
 import com.example.codise.data.Ciudad
 import com.example.codise.data.Circuito
+import com.example.codise.data.PuntoInteres
 import com.example.codise.data.ItemGaleria
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Church
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Park
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Restaurant
 import com.example.codise.ui.theme.AzulPetroleo
 import com.example.codise.ui.theme.Codice路Theme
 import com.example.codise.ui.theme.GoldColor
@@ -120,7 +128,54 @@ fun PantallaDetalleCiudad(
                 modifier = Modifier.padding(top = 8.dp)
             )
 
-            if (ciudad.galeria.isNotEmpty()) {
+            // Agrupación de galerías por tipo de punto de interés
+            val mapaPuntos = remember(ciudad) {
+                ciudad.circuitos.flatMap { it.puntosInteres }.associateBy { it.id }
+            }
+
+            val galeriasOrdenadas = remember(ciudad, mapaPuntos) {
+                val pares = mutableListOf<Pair<String, ItemGaleria>>()
+
+                // 1. Fotos de los puntos de interés de los circuitos de la ciudad
+                ciudad.circuitos.flatMap { it.puntosInteres }.forEach { punto ->
+                    val tipo = normalizarTipoPunto(punto.tipo)
+                    punto.galeria.forEach { item ->
+                        pares.add(tipo to item)
+                    }
+                }
+
+                // 2. Elementos de ciudad.galeria
+                ciudad.galeria.forEach { item ->
+                    val tipoPunto = item.puntoInteres?.let { id ->
+                        mapaPuntos[id]?.tipo?.let { normalizarTipoPunto(it) }
+                    }
+                    pares.add((tipoPunto ?: "General") to item)
+                }
+
+                // 3. Deduplicar manteniendo el tipo más específico
+                val vistos = mutableSetOf<String>()
+                val unicos = mutableListOf<Pair<String, ItemGaleria>>()
+                pares.forEach { (tipo, item) ->
+                    val clave = when {
+                        item.id != 0 -> "id_${item.id}"
+                        !item.imagen.isNullOrBlank() -> "img_${item.imagen}"
+                        !item.videoUrl.isNullOrBlank() -> "vid_${item.videoUrl}"
+                        else -> "tit_${item.titulo}"
+                    }
+                    if (vistos.add(clave)) {
+                        unicos.add(tipo to item)
+                    }
+                }
+
+                unicos.groupBy({ it.first }, { it.second })
+                    .filterValues { it.isNotEmpty() }
+                    .toList()
+                    .sortedWith(
+                        compareBy { (tipo, _) -> if (tipo.equals("General", ignoreCase = true)) 1 else 0 }
+                    )
+            }
+
+            if (galeriasOrdenadas.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = cadenas.galeriaMultimedia,
@@ -164,12 +219,29 @@ fun PantallaDetalleCiudad(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                val galeriaMezclada = remember(ciudad.galeria) { ciudad.galeria.shuffled() }
-                CarruselGaleria(galeria = galeriaMezclada) { elemento ->
-                    elemento.videoUrl?.let { videoUrl ->
-                        extraerIdVideoYoutube(videoUrl)?.let { videoId ->
-                            idVideoSeleccionado = videoId
+                galeriasOrdenadas.forEach { (tipo, items) ->
+                    key(tipo) {
+                        Column(modifier = Modifier.padding(top = 16.dp)) {
+                            // Subtítulo con ícono y conteo si hay múltiples tipos o no es categoría General
+                            if (galeriasOrdenadas.size > 1 || !tipo.equals("General", ignoreCase = true)) {
+                                EncabezadoTipoGaleria(
+                                    tipo = tipo,
+                                    cantidad = items.size
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
+                            val galeriaMezclada = remember(items) { items.shuffled() }
+                            CarruselGaleria(
+                                galeria = galeriaMezclada,
+                                alHacerClicEnVideo = { elemento ->
+                                    elemento.videoUrl?.let { videoUrl ->
+                                        extraerIdVideoYoutube(videoUrl)?.let { videoId ->
+                                            idVideoSeleccionado = videoId
+                                        }
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -228,6 +300,78 @@ fun ReproductorYouTube(
     )
 }
 
+private fun normalizarTipoPunto(tipo: String): String {
+    val limpio = tipo.trim()
+    if (limpio.isBlank()) return "General"
+    return limpio.split(Regex("\\s+")).joinToString(" ") { palabra ->
+        palabra.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+    }
+}
+
+@Composable
+private fun EncabezadoTipoGaleria(
+    tipo: String,
+    cantidad: Int,
+    modifier: Modifier = Modifier
+) {
+    val tipoLower = tipo.lowercase()
+    val (fondoBadge, colorTextoBadge) = when {
+        "historico" in tipoLower || "histórico" in tipoLower -> Color(0xFFFFF3E0) to Color(0xFFE65100)
+        "natural" in tipoLower || "ecologico" in tipoLower || "ecológico" in tipoLower -> Color(0xFFE8F5E9) to Color(0xFF2E7D32)
+        "cultural" in tipoLower -> Color(0xFFE1F5FE) to Color(0xFF01579B)
+        "religioso" in tipoLower -> Color(0xFFEDE7F6) to Color(0xFF512DA8)
+        "gastronomico" in tipoLower || "gastronómico" in tipoLower -> Color(0xFFFBE9E7) to Color(0xFFD84315)
+        else -> Color(0xFFE0F2F1) to Color(0xFF00695C)
+    }
+
+    val icono: ImageVector = when {
+        "historico" in tipoLower || "histórico" in tipoLower -> Icons.Default.AccountBalance
+        "natural" in tipoLower || "ecologico" in tipoLower || "ecológico" in tipoLower -> Icons.Default.Park
+        "cultural" in tipoLower -> Icons.Default.Palette
+        "religioso" in tipoLower -> Icons.Default.Church
+        "gastronomico" in tipoLower || "gastronómico" in tipoLower -> Icons.Default.Restaurant
+        else -> Icons.Default.Place
+    }
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f, fill = false)
+        ) {
+            Icon(
+                imageVector = icono,
+                contentDescription = null,
+                tint = colorTextoBadge,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = tipo,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AzulPetroleo
+            )
+        }
+
+        Surface(
+            color = fondoBadge,
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = "$cantidad",
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorTextoBadge
+            )
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun VistaPreviaPantallaDetalleCiudad() {
@@ -251,13 +395,45 @@ fun VistaPreviaPantallaDetalleCiudad() {
                         duracionEstimada = "2 horas",
                         dificultad = "Baja",
                         imagenMapa = null,
-                        puntosInteres = emptyList()
+                        puntosInteres = listOf(
+                            PuntoInteres(
+                                id = 1,
+                                circuito = 1,
+                                circuitoNombre = "Circuito Colonial",
+                                nombre = "Catedral de León",
+                                descripcion = "Catedral de la Asunción de la Bienaventurada Virgen María.",
+                                tipo = "Sitio Histórico",
+                                orden = 1,
+                                latitud = 12.435,
+                                longitud = -86.879,
+                                datosHistoricos = emptyList(),
+                                galeria = listOf(
+                                    ItemGaleria(1, 1, 1, "Catedral de León", "Imagen", "https://example.com/cat.jpg", null)
+                                )
+                            ),
+                            PuntoInteres(
+                                id = 2,
+                                circuito = 1,
+                                circuitoNombre = "Circuito Colonial",
+                                nombre = "Volcán Cerro Negro",
+                                descripcion = "Volcán activo para sandboarding.",
+                                tipo = "Sitio Natural",
+                                orden = 2,
+                                latitud = 12.500,
+                                longitud = -86.700,
+                                datosHistoricos = emptyList(),
+                                galeria = listOf(
+                                    ItemGaleria(2, 1, 2, "Cerro Negro", "Imagen", "https://example.com/volcan.jpg", null)
+                                )
+                            )
+                        )
                     )
                 ),
                 datosHistoricos = emptyList(),
                 galeria = listOf(
-                    ItemGaleria(1, 1, null, "Catedral de León", "Imagen", "https://example.com/cat.jpg", null),
-                    ItemGaleria(2, 1, null, "Documental León", "Video", null, "https://youtube.com/watch?v=123")
+                    ItemGaleria(1, 1, 1, "Catedral de León", "Imagen", "https://example.com/cat.jpg", null),
+                    ItemGaleria(2, 1, 2, "Cerro Negro", "Imagen", "https://example.com/volcan.jpg", null),
+                    ItemGaleria(3, 1, null, "Documental León", "Video", null, "https://youtube.com/watch?v=123")
                 )
             ),
             alRegresar = {}
