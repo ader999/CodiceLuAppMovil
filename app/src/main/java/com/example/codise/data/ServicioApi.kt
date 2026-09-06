@@ -253,5 +253,14 @@ data class RespuestaAsistente(
     val respuesta: String,
     val herramientas_utilizadas: List<HerramientaUtilizada>? = null,
     val modelo_utilizado: String? = null,
-    val idioma: String? = null
-)
+    val idioma: String? = null,
+    val puntos_interes_ids: List<Int>? = null,
+    val puntos_ids: List<Int>? = null
+) {
+    fun obtenerPuntosIds(): List<Int> {
+        val ids = mutableListOf<Int>()
+        puntos_interes_ids?.let { ids.addAll(it) }
+        puntos_ids?.let { ids.addAll(it) }
+        return ids.distinct()
+    }
+}
