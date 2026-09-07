@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -30,6 +29,7 @@ import com.example.codise.data.ItemGaleria
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Church
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Place
@@ -39,11 +39,7 @@ import com.example.codise.ui.theme.Codice路Theme
 import com.example.codise.ui.theme.GoldColor
 import com.example.codise.ui.theme.NegroPuro
 import com.example.codise.utils.LocalCadenas
-import com.example.codise.utils.extraerIdVideoYoutube
 import com.example.codise.utils.aUrlCompleta
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 
 @Composable
 fun PantallaDetalleCiudad(
@@ -52,7 +48,8 @@ fun PantallaDetalleCiudad(
     paddingSuperior: Dp = 0.dp
 ) {
     val cadenas = LocalCadenas.current
-    var idVideoSeleccionado by remember { mutableStateOf<String?>(null) }
+    var videoSeleccionado by remember { mutableStateOf<ItemGaleria?>(null) }
+    var videoParaPantallaCompleta by remember { mutableStateOf<ItemGaleria?>(null) }
 
     Column(
         modifier = Modifier
@@ -159,6 +156,7 @@ fun PantallaDetalleCiudad(
                     val clave = when {
                         item.id != 0 -> "id_${item.id}"
                         !item.imagen.isNullOrBlank() -> "img_${item.imagen}"
+                        !item.videoArchivo.isNullOrBlank() -> "vidarch_${item.videoArchivo}"
                         !item.videoUrl.isNullOrBlank() -> "vid_${item.videoUrl}"
                         else -> "tit_${item.titulo}"
                     }
@@ -184,7 +182,7 @@ fun PantallaDetalleCiudad(
                     color = AzulPetroleo
                 )
 
-                if (idVideoSeleccionado != null) {
+                if (videoSeleccionado != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Card(
                         modifier = Modifier
@@ -194,26 +192,44 @@ fun PantallaDetalleCiudad(
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            key(idVideoSeleccionado) {
-                                ReproductorYouTube(
-                                    idVideo = idVideoSeleccionado!!,
+                            key(videoSeleccionado!!.id, videoSeleccionado!!.urlVideo) {
+                                ReproductorMultimedia(
+                                    elemento = videoSeleccionado!!,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
-                            IconButton(
-                                onClick = { idVideoSeleccionado = null },
+                            Row(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                                    .size(32.dp)
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = cadenas.cerrar,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                IconButton(
+                                    onClick = { videoParaPantallaCompleta = videoSeleccionado },
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                                        .size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Fullscreen,
+                                        contentDescription = "Pantalla completa",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { videoSeleccionado = null },
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                                        .size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = cadenas.cerrar,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -235,11 +251,7 @@ fun PantallaDetalleCiudad(
                             CarruselGaleria(
                                 galeria = galeriaMezclada,
                                 alHacerClicEnVideo = { elemento ->
-                                    elemento.videoUrl?.let { videoUrl ->
-                                        extraerIdVideoYoutube(videoUrl)?.let { videoId ->
-                                            idVideoSeleccionado = videoId
-                                        }
-                                    }
+                                    videoSeleccionado = elemento
                                 }
                             )
                         }
@@ -276,28 +288,14 @@ fun PantallaDetalleCiudad(
             Spacer(modifier = Modifier.height(80.dp))
         }
     }
-}
 
-@Composable
-fun ReproductorYouTube(
-    idVideo: String,
-    modifier: Modifier = Modifier
-) {
-    val propietarioCicloVida = LocalLifecycleOwner.current
-
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            YouTubePlayerView(ctx).apply {
-                propietarioCicloVida.lifecycle.addObserver(this)
-                addYouTubePlayerListener(object : AbstractYouTubePlayerListener() {
-                    override fun onReady(youTubePlayer: YouTubePlayer) {
-                        youTubePlayer.loadVideo(idVideo, 0f)
-                    }
-                })
-            }
-        }
-    )
+    if (videoParaPantallaCompleta != null) {
+        DialogoVistaPreviaGaleria(
+            galeria = listOf(videoParaPantallaCompleta!!),
+            paginaInicial = 0,
+            alCerrar = { videoParaPantallaCompleta = null }
+        )
+    }
 }
 
 private fun normalizarTipoPunto(tipo: String): String {
