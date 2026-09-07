@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -40,6 +41,7 @@ import com.example.codise.ui.theme.*
 import com.example.codise.utils.AyudanteNotificaciones
 import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
+import com.example.codise.utils.extraerIdVideoYoutube
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -54,15 +56,19 @@ fun PantallaDetalleEvento(
     paddingSuperior: Dp = 0.dp
 ) {
     val cadenas = LocalCadenas.current
+    val contexto = LocalContext.current
+    var idVideoSeleccionado by remember { mutableStateOf<String?>(null) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = paddingSuperior)
             .verticalScroll(rememberScrollState())
     ) {
-        if (evento.imagen != null) {
+        val imagenEncabezado = evento.imagen ?: evento.galeria.firstOrNull { it.imagen != null }?.imagen
+        if (imagenEncabezado != null) {
             AsyncImage(
-                model = evento.imagen.aUrlCompleta(),
+                model = imagenEncabezado.aUrlCompleta(),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -82,7 +88,6 @@ fun PantallaDetalleEvento(
         }
 
         Column(modifier = Modifier.padding(20.dp)) {
-            val contexto = LocalContext.current
             
             // Lanzador de permiso de notificaciones
             val lanzador = rememberLauncherForActivityResult(
@@ -206,6 +211,67 @@ fun PantallaDetalleEvento(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = GoldColor
+                )
+            }
+
+            if (evento.galeria.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = cadenas.galeriaMultimedia,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AzulPetroleo
+                )
+
+                if (idVideoSeleccionado != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            key(idVideoSeleccionado) {
+                                ReproductorYouTube(
+                                    idVideo = idVideoSeleccionado!!,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            IconButton(
+                                onClick = { idVideoSeleccionado = null },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                                    .size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = cadenas.cerrar,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                CarruselGaleria(
+                    galeria = evento.galeria,
+                    alHacerClicEnVideo = { elemento ->
+                        elemento.videoUrl?.let { videoUrl ->
+                            val videoId = extraerIdVideoYoutube(videoUrl)
+                            if (videoId != null) {
+                                idVideoSeleccionado = videoId
+                            } else {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(videoUrl))
+                                contexto.startActivity(intent)
+                            }
+                        }
+                    }
                 )
             }
 

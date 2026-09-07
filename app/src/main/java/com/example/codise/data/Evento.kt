@@ -20,7 +20,8 @@ data class Evento(
     val latitud: Double?,
     val longitud: Double?,
     @SerializedName("esta_activo") val estaActivo: Boolean = true,
-    @SerializedName("fecha_creacion") val fechaCreacion: String
+    @SerializedName("fecha_creacion") val fechaCreacion: String,
+    val galeria: List<ItemGaleria> = emptyList()
 )
 
 data class SolicitudEvento(
