@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,12 +37,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.codise.data.Evento
+import com.example.codise.data.ItemGaleria
 import com.example.codise.receivers.ReceptorNotificacionesEvento
 import com.example.codise.ui.theme.*
 import com.example.codise.utils.AyudanteNotificaciones
 import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
-import com.example.codise.utils.extraerIdVideoYoutube
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -57,7 +58,8 @@ fun PantallaDetalleEvento(
 ) {
     val cadenas = LocalCadenas.current
     val contexto = LocalContext.current
-    var idVideoSeleccionado by remember { mutableStateOf<String?>(null) }
+    var videoSeleccionado by remember { mutableStateOf<ItemGaleria?>(null) }
+    var videoParaPantallaCompleta by remember { mutableStateOf<ItemGaleria?>(null) }
 
     Column(
         modifier = Modifier
@@ -223,7 +225,7 @@ fun PantallaDetalleEvento(
                     color = AzulPetroleo
                 )
 
-                if (idVideoSeleccionado != null) {
+                if (videoSeleccionado != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Card(
                         modifier = Modifier
@@ -233,26 +235,44 @@ fun PantallaDetalleEvento(
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            key(idVideoSeleccionado) {
-                                ReproductorYouTube(
-                                    idVideo = idVideoSeleccionado!!,
+                            key(videoSeleccionado!!.id, videoSeleccionado!!.urlVideo) {
+                                ReproductorMultimedia(
+                                    elemento = videoSeleccionado!!,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
-                            IconButton(
-                                onClick = { idVideoSeleccionado = null },
+                            Row(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                                    .size(32.dp)
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = cadenas.cerrar,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                IconButton(
+                                    onClick = { videoParaPantallaCompleta = videoSeleccionado },
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                                        .size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Fullscreen,
+                                        contentDescription = "Pantalla completa",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { videoSeleccionado = null },
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                                        .size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = cadenas.cerrar,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -262,21 +282,21 @@ fun PantallaDetalleEvento(
                 CarruselGaleria(
                     galeria = evento.galeria,
                     alHacerClicEnVideo = { elemento ->
-                        elemento.videoUrl?.let { videoUrl ->
-                            val videoId = extraerIdVideoYoutube(videoUrl)
-                            if (videoId != null) {
-                                idVideoSeleccionado = videoId
-                            } else {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(videoUrl))
-                                contexto.startActivity(intent)
-                            }
-                        }
+                        videoSeleccionado = elemento
                     }
                 )
             }
 
             Spacer(modifier = Modifier.height(80.dp))
         }
+    }
+
+    if (videoParaPantallaCompleta != null) {
+        DialogoVistaPreviaGaleria(
+            galeria = listOf(videoParaPantallaCompleta!!),
+            paginaInicial = 0,
+            alCerrar = { videoParaPantallaCompleta = null }
+        )
     }
 }
 

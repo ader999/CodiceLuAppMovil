@@ -1,5 +1,6 @@
 package com.example.codise.data
 
+import com.example.codise.utils.aUrlCompleta
 import com.google.gson.annotations.SerializedName
 
 data class Ciudad(
@@ -56,8 +57,18 @@ data class ItemGaleria(
     val ciudad: Int?,
     @SerializedName("punto_interes") val puntoInteres: Int?,
     val titulo: String,
-    val tipo: String,
+    val tipo: String = "Imagen",
     val imagen: String?,
-    @SerializedName("video_url") val videoUrl: String?,
-    val evento: Int? = null
-)
+    @SerializedName("video_url") val videoUrl: String? = null,
+    val evento: Int? = null,
+    @SerializedName("video_archivo") val videoArchivo: String? = null
+) {
+    val tieneVideo: Boolean
+        get() = !videoArchivo.isNullOrBlank() || !videoUrl.isNullOrBlank()
+
+    val esVideo: Boolean
+        get() = tipo.equals("Video", ignoreCase = true) || tieneVideo
+
+    val urlVideo: String?
+        get() = videoArchivo?.aUrlCompleta() ?: videoUrl?.let { if (it.startsWith("/")) it.aUrlCompleta() else it }
+}
