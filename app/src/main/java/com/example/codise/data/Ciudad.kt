@@ -58,5 +58,6 @@ data class ItemGaleria(
     val titulo: String,
     val tipo: String,
     val imagen: String?,
-    @SerializedName("video_url") val videoUrl: String?
+    @SerializedName("video_url") val videoUrl: String?,
+    val evento: Int? = null
 )
