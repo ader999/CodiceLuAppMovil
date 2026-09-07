@@ -12,10 +12,15 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CropFree
+import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,12 +34,235 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.example.codise.data.ItemGaleria
+import com.example.codise.utils.aUrlCompleta
 import kotlinx.coroutines.launch
+
+@OptIn(UnstableApi::class)
+@Composable
+fun DialogoVistaPreviaGaleria(
+    galeria: List<ItemGaleria>,
+    paginaInicial: Int = 0,
+    alCerrar: () -> Unit
+) {
+    if (galeria.isEmpty()) return
+
+    val paginaValida = paginaInicial.coerceIn(0, (galeria.size - 1).coerceAtLeast(0))
+    val estadoPaginador = rememberPagerState(initialPage = paginaValida, pageCount = { galeria.size })
+    val coroutineScope = rememberCoroutineScope()
+    var zoomActivo by remember { mutableStateOf(false) }
+    var modoLlenarPantalla by remember { mutableStateOf(false) }
+
+    LaunchedEffect(estadoPaginador.currentPage) {
+        zoomActivo = false
+    }
+
+    Dialog(
+        onDismissRequest = alCerrar,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            HorizontalPager(
+                state = estadoPaginador,
+                userScrollEnabled = !zoomActivo,
+                modifier = Modifier.fillMaxSize()
+            ) { pagina ->
+                val elemento = galeria[pagina]
+                key(elemento.id, elemento.urlVideo, elemento.imagen) {
+                    if (elemento.esVideo) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ReproductorMultimedia(
+                                elemento = elemento,
+                                autoPlay = (estadoPaginador.currentPage == pagina),
+                                resizeMode = if (modoLlenarPantalla) {
+                                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                } else {
+                                    AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    } else {
+                        val urlImagen = elemento.imagen?.aUrlCompleta().orEmpty()
+                        ElementoImagenZoomable(
+                            url = urlImagen,
+                            alCambiarZoom = { estaZoomed ->
+                                if (estadoPaginador.currentPage == pagina) {
+                                    zoomActivo = estaZoomed
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            val elementoActual = galeria.getOrNull(estadoPaginador.currentPage)
+
+            // Barra superior unificada: Contador, título y botones de acción dentro del mismo recuadro negro
+            Surface(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.Black.copy(alpha = 0.65f)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${estadoPaginador.currentPage + 1} / ${galeria.size}",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (!elementoActual?.titulo.isNullOrBlank()) {
+                            Text(
+                                text = " • ${elementoActual.titulo}",
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    if (elementoActual?.esVideo == true) {
+                        IconButton(
+                            onClick = { modoLlenarPantalla = !modoLlenarPantalla },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (modoLlenarPantalla) Icons.Default.FitScreen else Icons.Default.CropFree,
+                                contentDescription = if (modoLlenarPantalla) "Ajustar a pantalla" else "Llenar pantalla",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(2.dp))
+                    }
+
+                    IconButton(
+                        onClick = alCerrar,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Cerrar",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
+            // Flecha navegación anterior
+            if (galeria.size > 1 && !zoomActivo && estadoPaginador.currentPage > 0) {
+                IconButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            estadoPaginador.animateScrollToPage(estadoPaginador.currentPage - 1)
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 12.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                        .size(40.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBackIos,
+                        contentDescription = "Anterior",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp).padding(start = 4.dp)
+                    )
+                }
+            }
+
+            // Flecha navegación siguiente
+            if (galeria.size > 1 && !zoomActivo && estadoPaginador.currentPage < galeria.size - 1) {
+                IconButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            estadoPaginador.animateScrollToPage(estadoPaginador.currentPage + 1)
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 12.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                        .size(40.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = "Siguiente",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Indicadores inferiores interactivos (dots)
+            if (galeria.size > 1) {
+                Row(
+                    Modifier
+                        .navigationBarsPadding()
+                        .height(50.dp)
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(galeria.size) { iteracion ->
+                        val esActual = estadoPaginador.currentPage == iteracion
+                        val color = if (esActual) Color.White else Color.White.copy(alpha = 0.5f)
+                        val tamano = if (esActual) 10.dp else 7.dp
+
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .size(tamano)
+                                .clickable {
+                                    coroutineScope.launch {
+                                        estadoPaginador.animateScrollToPage(iteracion)
+                                    }
+                                }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun DialogoVistaPreviaImagen(
@@ -82,36 +310,40 @@ fun DialogoVistaPreviaImagen(
                 }
             }
 
-            // Contador de páginas
-            if (imagenes.size > 1) {
-                Surface(
-                    modifier = Modifier
-                        .statusBarsPadding()
-                        .padding(16.dp)
-                        .align(Alignment.TopStart),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.Black.copy(alpha = 0.5f)
-                ) {
-                    Text(
-                        text = "${estadoPaginador.currentPage + 1} / ${imagenes.size}",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            // Botón de cerrar
-            IconButton(
-                onClick = alCerrar,
+            // Barra superior: Contador y botón de cerrar
+            Row(
                 modifier = Modifier
                     .statusBarsPadding()
-                    .padding(16.dp)
-                    .align(Alignment.TopEnd)
-                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
+                if (imagenes.size > 1) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.Black.copy(alpha = 0.65f)
+                    ) {
+                        Text(
+                            text = "${estadoPaginador.currentPage + 1} / ${imagenes.size}",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
+                }
+
+                IconButton(
+                    onClick = alCerrar,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
+                }
             }
 
             // Flecha navegación anterior
