@@ -46,6 +46,7 @@ fun ContenidoPerfil(
     alVolver: () -> Unit,
     alGuardar: (Usuario, Uri?) -> Unit,
     alCambiarFoto: (Uri) -> Unit = {},
+    perfilActivo: PerfilActivo = PerfilActivo.UsuarioActivo,
     estadoUiPerfil: EstadoUiPerfil,
     estadoUiEmpresa: EstadoUiEmpresa,
     alRegistrarEmpresa: (String, Empresa) -> Unit,
@@ -94,6 +95,10 @@ fun ContenidoPerfil(
         }
     }
 
+    val esPerfilEmpresa = perfilActivo is PerfilActivo.EmpresaActiva
+    val empresaActiva = if (esPerfilEmpresa) (perfilActivo as PerfilActivo.EmpresaActiva).empresa else null
+    val fotoVisualizar = if (esPerfilEmpresa) empresaActiva?.imagenPortada else usuario.fotoPerfil
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -103,30 +108,35 @@ fun ContenidoPerfil(
     ) {
         // Icono de perfil con foto de usuario y opción para cambiarla
         IconoPerfilUsuario(
-            fotoPerfil = usuario.fotoPerfil,
+            fotoPerfil = fotoVisualizar,
             uriFotoLocal = uriFotoSeleccionada,
             alHacerClicEnCambiarFoto = {
-                lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                if (!esPerfilEmpresa) {
+                    lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
             },
             estaCargando = estaCargandoPerfil,
-            tamano = if (mostrarFormulario) 100.dp else 110.dp
+            tamano = if (mostrarFormulario) 100.dp else 110.dp,
+            esEmpresa = esPerfilEmpresa
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = cadenas.cambiarFoto,
-            color = AzulPetroleo.copy(alpha = 0.7f),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable {
-                lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-            }
-        )
+        if (!esPerfilEmpresa) {
+            Text(
+                text = cadenas.cambiarFoto,
+                color = AzulPetroleo.copy(alpha = 0.7f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable {
+                    lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (mostrarFormulario) {
+        if (mostrarFormulario && !esPerfilEmpresa) {
             // VISTA FORMULARIO DE EDICIÓN
             Text(
                 text = cadenas.editarPerfil,
@@ -212,71 +222,131 @@ fun ContenidoPerfil(
                 Text(cadenas.cancelar, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         } else {
-            // VISTA INFORMACIÓN DE PERFIL (VISTA PRINCIPAL)
-            val nombreCompleto = "${usuario.nombre.orEmpty()} ${usuario.apellido.orEmpty()}".trim()
-            Text(
-                text = nombreCompleto.ifBlank { usuario.nombreUsuario.orEmpty() },
-                color = AzulPetroleo,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "@${usuario.nombreUsuario.orEmpty()}",
-                color = NegroPuro.copy(alpha = 0.6f),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
             val esProtagonistaEfectivo = usuario.esProtagonista || empresasUsuario.isNotEmpty()
+            
+            // VISTA INFORMACIÓN DE PERFIL (VISTA PRINCIPAL)
+            if (esPerfilEmpresa && empresaActiva != null) {
+                Text(
+                    text = empresaActiva.nombre,
+                    color = AzulPetroleo,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
 
-            // Etiquetas de rol
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (usuario.esStaff) {
-                    InsigniaRol(texto = cadenas.rolStaff, colorFondo = AzulPetroleo, colorTexto = GoldColor)
-                }
-                if (esProtagonistaEfectivo) {
-                    InsigniaRol(texto = cadenas.rolProtagonista, colorFondo = GoldColor, colorTexto = AzulPetroleo)
-                } else if (usuario.esTurista) {
-                    InsigniaRol(texto = cadenas.rolTurista, colorFondo = Celeste.copy(alpha = 0.8f), colorTexto = AzulPetroleo)
-                }
-            }
+                Text(
+                    text = "@${empresaActiva.usuarioNombreUsuario ?: usuario.nombreUsuario}",
+                    color = NegroPuro.copy(alpha = 0.6f),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                )
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // Tarjeta con información detallada
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = BlancoBase),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                InsigniaRol(texto = empresaActiva.categoria, colorFondo = GoldColor, colorTexto = AzulPetroleo)
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = BlancoBase),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    ElementoDetallePerfil(
-                        icono = Icons.Default.Email,
-                        titulo = cadenas.correoElectronico,
-                        valor = usuario.correoElectronico.orEmpty()
-                    )
-                    HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
-                    ElementoDetallePerfil(
-                        icono = Icons.Default.Phone,
-                        titulo = cadenas.telefono,
-                        valor = if (usuario.telefono.isNullOrBlank()) cadenas.noRegistrado else usuario.telefono
-                    )
-                    HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
-                    ElementoDetallePerfil(
-                        icono = Icons.Default.Badge,
-                        titulo = cadenas.nombreUsuario,
-                        valor = usuario.nombreUsuario.orEmpty()
-                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        ElementoDetallePerfil(
+                            icono = Icons.Default.Email,
+                            titulo = cadenas.correoElectronico,
+                            valor = empresaActiva.emailContacto.ifBlank { "No registrado" }
+                        )
+                        HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
+                        ElementoDetallePerfil(
+                            icono = Icons.Default.Phone,
+                            titulo = cadenas.telefono,
+                            valor = empresaActiva.telefonoContacto.ifBlank { "No registrado" }
+                        )
+                        HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
+                        ElementoDetallePerfil(
+                            icono = Icons.Default.LocationOn,
+                            titulo = "Ubicación",
+                            valor = "${empresaActiva.direccion}${if (empresaActiva.ciudadNombre != null) " (${empresaActiva.ciudadNombre})" else ""}".ifBlank { "No registrado" }
+                        )
+                        if (!empresaActiva.sitioWeb.isNullOrBlank()) {
+                            HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
+                            ElementoDetallePerfil(
+                                icono = Icons.Default.Language,
+                                titulo = "Sitio Web",
+                                valor = empresaActiva.sitioWeb
+                            )
+                        }
+                    }
+                }
+            } else {
+                val nombreCompleto = "${usuario.nombre.orEmpty()} ${usuario.apellido.orEmpty()}".trim()
+                Text(
+                    text = nombreCompleto.ifBlank { usuario.nombreUsuario.orEmpty() },
+                    color = AzulPetroleo,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "@${usuario.nombreUsuario.orEmpty()}",
+                    color = NegroPuro.copy(alpha = 0.6f),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Etiquetas de rol
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (usuario.esStaff) {
+                        InsigniaRol(texto = cadenas.rolStaff, colorFondo = AzulPetroleo, colorTexto = GoldColor)
+                    }
+                    if (esProtagonistaEfectivo) {
+                        InsigniaRol(texto = cadenas.rolProtagonista, colorFondo = GoldColor, colorTexto = AzulPetroleo)
+                    } else if (usuario.esTurista) {
+                        InsigniaRol(texto = cadenas.rolTurista, colorFondo = Celeste.copy(alpha = 0.8f), colorTexto = AzulPetroleo)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Tarjeta con información detallada
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = BlancoBase),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        ElementoDetallePerfil(
+                            icono = Icons.Default.Email,
+                            titulo = cadenas.correoElectronico,
+                            valor = usuario.correoElectronico.orEmpty()
+                        )
+                        HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
+                        ElementoDetallePerfil(
+                            icono = Icons.Default.Phone,
+                            titulo = cadenas.telefono,
+                            valor = if (usuario.telefono.isNullOrBlank()) cadenas.noRegistrado else usuario.telefono
+                        )
+                        HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
+                        ElementoDetallePerfil(
+                            icono = Icons.Default.Badge,
+                            titulo = cadenas.nombreUsuario,
+                            valor = usuario.nombreUsuario.orEmpty()
+                        )
+                    }
                 }
             }
 
@@ -405,7 +475,7 @@ fun ContenidoPerfil(
                 }
             }
 
-            if (esProtagonistaEfectivo && !mostrarFormularioEmpresa) {
+            if (!esPerfilEmpresa && esProtagonistaEfectivo && !mostrarFormularioEmpresa) {
                 Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider(color = GrisClaro.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(20.dp))
@@ -468,7 +538,7 @@ fun ContenidoPerfil(
                 }
             }
 
-            if (!esProtagonistaEfectivo && !mostrarFormularioEmpresa) {
+            if (!esPerfilEmpresa && !esProtagonistaEfectivo && !mostrarFormularioEmpresa) {
                 Spacer(modifier = Modifier.height(28.dp))
                 HorizontalDivider(color = GrisClaro.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(20.dp))
@@ -519,7 +589,8 @@ fun IconoPerfilUsuario(
     uriFotoLocal: Uri?,
     alHacerClicEnCambiarFoto: () -> Unit,
     estaCargando: Boolean = false,
-    tamano: Dp = 100.dp
+    tamano: Dp = 100.dp,
+    esEmpresa: Boolean = false
 ) {
     Box(
         modifier = Modifier
@@ -552,7 +623,7 @@ fun IconoPerfilUsuario(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Default.Person,
+                    imageVector = if (esEmpresa) Icons.Default.Business else Icons.Default.Person,
                     contentDescription = null,
                     tint = GoldColor,
                     modifier = Modifier.size(tamano * 0.6f)
@@ -576,21 +647,23 @@ fun IconoPerfilUsuario(
         }
 
         // Insignia con icono de cámara
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .align(Alignment.BottomEnd)
-                .clip(CircleShape)
-                .background(GoldColor)
-                .border(1.5.dp, BlancoBase, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.CameraAlt,
-                contentDescription = "Cambiar foto",
-                tint = AzulPetroleo,
-                modifier = Modifier.size(18.dp)
-            )
+        if (!esEmpresa) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .align(Alignment.BottomEnd)
+                    .clip(CircleShape)
+                    .background(GoldColor)
+                    .border(1.5.dp, BlancoBase, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Cambiar foto",
+                    tint = AzulPetroleo,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
@@ -984,6 +1057,7 @@ fun PantallaPerfil(
     alVolver: () -> Unit,
     alGuardar: (Usuario) -> Unit,
     alCambiarFoto: (Uri) -> Unit = {},
+    perfilActivo: PerfilActivo = PerfilActivo.UsuarioActivo,
     estadoUiPerfil: EstadoUiPerfil,
     estadoUiEmpresa: EstadoUiEmpresa,
     alRegistrarEmpresa: (String, Empresa) -> Unit,

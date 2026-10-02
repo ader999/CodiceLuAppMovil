@@ -58,6 +58,8 @@ import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
+import androidx.compose.ui.graphics.painter.ColorPainter
+import com.example.codise.data.Empresa
 import com.example.codise.utils.CadenasIdiomas
 import com.example.codise.utils.LocalCadenas
 import com.google.android.gms.common.api.ResolvableApiException
@@ -126,6 +128,7 @@ fun AplicacionAutenticada(
     val viewModelPerfil: ViewModelPerfil = viewModel()
     val estadoUiPerfil by viewModelPerfil.estadoUi.collectAsState()
     val empresasUsuario by viewModelPerfil.empresasUsuario.collectAsState()
+    val perfilActivo by viewModelPerfil.perfilActivo.collectAsState()
     val usuarioActual = when (val estado = estadoUiPerfil) {
         is EstadoUiPerfil.Exito -> estado.usuario
         else -> usuario
@@ -386,8 +389,15 @@ fun AplicacionAutenticada(
 
     Scaffold(
         topBar = {
+            val fotoActiva = when (val perfil = perfilActivo) {
+                is PerfilActivo.UsuarioActivo -> usuarioActual.fotoPerfil
+                is PerfilActivo.EmpresaActiva -> perfil.empresa.imagenPortada
+            }
             BarraSuperior(
-                fotoPerfil = usuarioActual.fotoPerfil,
+                fotoPerfil = fotoActiva,
+                perfilActivo = perfilActivo,
+                empresasUsuario = empresasUsuario,
+                alCambiarPerfil = { viewModelPerfil.cambiarPerfilActivo(it) },
                 idiomaActual = idiomaActual,
                 alHacerClicEnPerfil = {
                     pantallaActual = "profile"
@@ -508,6 +518,7 @@ fun AplicacionAutenticada(
                         alCambiarFoto = { uri ->
                             viewModelPerfil.actualizarFotoPerfil(token, uri)
                         },
+                        perfilActivo = perfilActivo,
                         estadoUiPerfil = estadoUiPerfil,
                         estadoUiEmpresa = estadoUiEmpresa,
                         alRegistrarEmpresa = { t, emp -> viewModelPerfil.registrarEmpresa(t, emp) },
@@ -606,7 +617,8 @@ fun AplicacionAutenticada(
                             viewModelPublicaciones.reiniciarEstadoSubida()
                         },
                         alSubir = { descripcion, idCiudad, idEmpresa, idEvento, uris ->
-                            viewModelPublicaciones.subirPublicacion(descripcion, idCiudad, idEmpresa, idEvento, uris)
+                            val empresaAUsar = if (perfilActivo is PerfilActivo.EmpresaActiva) (perfilActivo as PerfilActivo.EmpresaActiva).empresa.id else idEmpresa
+                            viewModelPublicaciones.subirPublicacion(descripcion, idCiudad, empresaAUsar, idEvento, uris)
                         },
                         estaSubiendo = estaSubiendo,
                         subidaExitosa = subidaExitosa,
@@ -624,7 +636,12 @@ fun AplicacionAutenticada(
                             pantallaActual = "events"
                             viewModelEventos.reiniciarEstadoSubida()
                         },
-                        alSubir = { solicitud, uriImagen -> viewModelEventos.subirEvento(solicitud, uriImagen) },
+                        alSubir = { solicitud, uriImagen -> 
+                            val solicitudModificada = if (perfilActivo is PerfilActivo.EmpresaActiva) {
+                                solicitud.copy(empresa = (perfilActivo as PerfilActivo.EmpresaActiva).empresa.id)
+                            } else solicitud
+                            viewModelEventos.subirEvento(solicitudModificada, uriImagen)
+                        },
                         estaSubiendo = estaSubiendo,
                         subidaExitosa = subidaExitosa,
                         paddingSuperior = paddingSuperior
@@ -687,12 +704,18 @@ fun PantallaPrincipal(
 @Composable
 fun BarraSuperior(
     fotoPerfil: String? = null,
+    perfilActivo: PerfilActivo = PerfilActivo.UsuarioActivo,
+    empresasUsuario: List<Empresa> = emptyList(),
+    alCambiarPerfil: (PerfilActivo) -> Unit = {},
     idiomaActual: IdiomaApp = IdiomaApp.ESPANOL,
     alHacerClicEnPerfil: () -> Unit,
     alHacerClicEnLogo: () -> Unit,
     alHacerClicEnAsistente: () -> Unit = {},
     alHacerClicEnIdioma: () -> Unit = {}
 ) {
+    val cadenas = LocalCadenas.current
+    var mostrarMenuPerfil by remember { mutableStateOf(false) }
+
     val formaBarraSuperior = GenericShape { size, _ ->
         val w = size.width
         val h = size.height
@@ -779,34 +802,82 @@ fun BarraSuperior(
                 )
             }
             
-            // Icono de Perfil (Usuario) a la derecha del borde
+            // Icono de Perfil (Usuario/Empresa) a la derecha del borde
             Box(
                 modifier = Modifier
                     .weight(0.2f)
                     .padding(end = 8.dp)
-                    .clickable { alHacerClicEnPerfil() },
-                contentAlignment = Alignment.Center
             ) {
-                if (!fotoPerfil.isNullOrBlank()) {
-                    AsyncImage(
-                        model = fotoPerfil.aUrlCompleta(),
-                        contentDescription = "Perfil",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .offset(y = 3.0.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, GoldColor, CircleShape),
-                        contentScale = ContentScale.Crop,
-                        error = androidx.compose.ui.graphics.painter.ColorPainter(GoldColor.copy(alpha = 0.3f))
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .clickable {
+                            if (empresasUsuario.isNotEmpty()) {
+                                mostrarMenuPerfil = true
+                            } else {
+                                alHacerClicEnPerfil()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!fotoPerfil.isNullOrBlank()) {
+                        AsyncImage(
+                            model = fotoPerfil.aUrlCompleta(),
+                            contentDescription = "Perfil",
+                            modifier = Modifier
+                                .size(28.dp)
+                                .offset(y = 3.0.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, GoldColor, CircleShape),
+                            contentScale = ContentScale.Crop,
+                            error = ColorPainter(GoldColor.copy(alpha = 0.3f))
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Perfil",
+                            tint = GoldColor,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .offset(y = 3.0.dp)
+                        )
+                    }
+                }
+                
+                DropdownMenu(
+                    expanded = mostrarMenuPerfil,
+                    onDismissRequest = { mostrarMenuPerfil = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Mi Perfil de Usuario", fontWeight = if (perfilActivo is PerfilActivo.UsuarioActivo) FontWeight.Bold else FontWeight.Normal) },
+                        onClick = {
+                            alCambiarPerfil(PerfilActivo.UsuarioActivo)
+                            mostrarMenuPerfil = false
+                        },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
                     )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Perfil",
-                        tint = GoldColor,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .offset(y = 3.0.dp)
+                    
+                    empresasUsuario.forEach { empresa ->
+                        val esActivo = perfilActivo is PerfilActivo.EmpresaActiva && perfilActivo.empresa.id == empresa.id
+                        DropdownMenuItem(
+                            text = { Text(empresa.nombre, fontWeight = if (esActivo) FontWeight.Bold else FontWeight.Normal) },
+                            onClick = {
+                                alCambiarPerfil(PerfilActivo.EmpresaActiva(empresa))
+                                mostrarMenuPerfil = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.Business, contentDescription = null) }
+                        )
+                    }
+
+                    HorizontalDivider()
+                    
+                    DropdownMenuItem(
+                        text = { Text("Ajustes de Perfil") },
+                        onClick = {
+                            mostrarMenuPerfil = false
+                            alHacerClicEnPerfil()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
                     )
                 }
             }
@@ -1108,7 +1179,10 @@ fun VistaPreviaBarraNavegacionInferior() {
 @Composable
 fun VistaPreviaBarraSuperior() {
     Codice路Theme {
-        BarraSuperior(alHacerClicEnPerfil = {}, alHacerClicEnLogo = {})
+        BarraSuperior(
+            alHacerClicEnPerfil = {},
+            alHacerClicEnLogo = {}
+        )
     }
 }
 

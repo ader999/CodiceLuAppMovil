@@ -25,7 +25,31 @@ data class Circuito(
     @SerializedName("duracion_estimada") val duracionEstimada: String,
     val dificultad: String,
     @SerializedName("imagen_mapa") val imagenMapa: String?,
-    @SerializedName("puntos_interes") val puntosInteres: List<PuntoInteres>
+    @SerializedName("puntos_interes") val puntosInteres: List<PuntoInteres>,
+    @SerializedName("empresas_en_ruta") val empresasEnRuta: List<EmpresaEnCircuito> = emptyList()
+)
+
+data class EmpresaEnCircuito(
+    val id: Int,
+    val nombre: String,
+    val descripcion: String,
+    val categoria: String,
+    val direccion: String?,
+    @SerializedName("telefono_contacto") val telefonoContacto: String?,
+    @SerializedName("numero_whatsapp") val numeroWhatsapp: String?,
+    @SerializedName("link_whatsapp") val linkWhatsapp: String?,
+    @SerializedName("email_contacto") val emailContacto: String?,
+    @SerializedName("sitio_web") val sitioWeb: String?,
+    @SerializedName("imagen_portada") val imagenPortada: String?,
+    val ciudad: Int,
+    @SerializedName("ciudad_nombre") val ciudadNombre: String,
+    val latitud: Double?,
+    val longitud: Double?,
+    @SerializedName("acepta_inversiones") val aceptaInversiones: Boolean,
+    @SerializedName("es_patrocinada") val esPatrocinada: Boolean,
+    @SerializedName("en_ruta") val enRuta: Boolean,
+    @SerializedName("distancia_metros") val distanciaMetros: Double?,
+    @SerializedName("punto_cercano_nombre") val puntoCercanoNombre: String?
 )
 
 data class PuntoInteres(

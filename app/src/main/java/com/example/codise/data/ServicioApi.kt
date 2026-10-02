@@ -55,6 +55,16 @@ interface ServicioApi {
     @GET("api/ciudades/")
     suspend fun obtenerCiudades(): Response<List<Ciudad>>
 
+    @GET("api/circuitos/{id}/")
+    suspend fun getDetalleCircuito(@Path("id") circuitoId: Int): Response<Circuito>
+
+    @GET("api/circuitos/{id}/empresas/")
+    suspend fun getEmpresasEnCircuito(
+        @Path("id") circuitoId: Int,
+        @Query("radio_metros") radioMetros: Double? = null,
+        @Query("radio_patrocinado_metros") radioPatrocinadoMetros: Double? = null
+    ): Response<List<EmpresaEnCircuito>>
+
     @POST("api/visitas/")
     suspend fun registrarVisita(
         @Header("Authorization") token: String,
