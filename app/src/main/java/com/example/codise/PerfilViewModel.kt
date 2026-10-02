@@ -35,6 +35,13 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
     private val _empresasUsuario = MutableStateFlow<List<Empresa>>(emptyList())
     val empresasUsuario: StateFlow<List<Empresa>> = _empresasUsuario
 
+    private val _perfilActivo = MutableStateFlow<PerfilActivo>(PerfilActivo.UsuarioActivo)
+    val perfilActivo: StateFlow<PerfilActivo> = _perfilActivo
+
+    fun cambiarPerfilActivo(nuevoPerfil: PerfilActivo) {
+        _perfilActivo.value = nuevoPerfil
+    }
+
     fun cargarPerfilYEmpresas(token: String, usuario: Usuario) {
         viewModelScope.launch {
             try {
@@ -274,4 +281,9 @@ sealed class EstadoUiEmpresa {
     object Cargando : EstadoUiEmpresa()
     data class Exito(val empresa: Empresa) : EstadoUiEmpresa()
     data class Error(val mensaje: String) : EstadoUiEmpresa()
+}
+
+sealed class PerfilActivo {
+    object UsuarioActivo : PerfilActivo()
+    data class EmpresaActiva(val empresa: Empresa) : PerfilActivo()
 }

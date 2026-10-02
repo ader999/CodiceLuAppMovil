@@ -7,6 +7,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,13 +33,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import com.example.codise.data.Circuito
+import com.example.codise.data.EmpresaEnCircuito
 import com.example.codise.data.PuntoInteres
 import com.example.codise.data.local.PuntoVisitado
 import com.example.codise.ui.theme.*
 import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
+import java.util.Locale
 
 @Composable
 fun PantallaDetalleCircuito(
@@ -69,6 +74,29 @@ fun PantallaDetalleCircuito(
             // Encabezado con información del circuito
             item {
                 EncabezadoCircuito(circuito)
+            }
+
+            if (circuito.empresasEnRuta.isNotEmpty()) {
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Comercios en Ruta",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AzulPetroleo,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(circuito.empresasEnRuta) { empresa ->
+                                TarjetaEmpresaEnRuta(empresa = empresa)
+                            }
+                        }
+                    }
+                }
             }
 
             // Encabezado de puntos de interés
@@ -420,5 +448,102 @@ fun TextoConIcono(icono: androidx.compose.ui.graphics.vector.ImageVector, texto:
         Icon(icono, null, tint = color, modifier = Modifier.size(16.dp))
         Spacer(modifier = Modifier.width(4.dp))
         Text(texto, color = color, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+fun TarjetaEmpresaEnRuta(empresa: EmpresaEnCircuito) {
+    val contexto = LocalContext.current
+    Card(
+        modifier = Modifier.width(280.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column {
+            Box(modifier = Modifier.fillMaxWidth().height(140.dp)) {
+                if (empresa.imagenPortada != null) {
+                    AsyncImage(
+                        model = empresa.imagenPortada.aUrlCompleta(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(Color.LightGray))
+                }
+                
+                if (empresa.esPatrocinada) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .background(GoldColor, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Recomendado", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = empresa.nombre,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AzulPetroleo,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                if (empresa.distanciaMetros != null && empresa.puntoCercanoNombre != null) {
+                    val distancia = if (empresa.distanciaMetros > 1000) {
+                        String.format(Locale.US, "%.1f km", empresa.distanciaMetros / 1000.0)
+                    } else {
+                        "${empresa.distanciaMetros.toInt()} m"
+                    }
+                    Text(
+                        text = "A $distancia de ${empresa.puntoCercanoNombre}",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = empresa.categoria,
+                    fontSize = 14.sp,
+                    color = NegroPuro,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                if (!empresa.linkWhatsapp.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(empresa.linkWhatsapp))
+                                contexto.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Ignore
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Call, contentDescription = "WhatsApp", modifier = Modifier.size(18.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("WhatsApp", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }
