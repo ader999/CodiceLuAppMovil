@@ -53,6 +53,7 @@ import java.util.Locale
 @Composable
 fun PantallaPublicaciones(
     viewModel: ViewModelPublicaciones,
+    idEmpresaActiva: Int? = null,
     alHacerClicEnSubir: () -> Unit = {},
     paddingSuperior: Dp = 0.dp
 ) {
@@ -64,7 +65,7 @@ fun PantallaPublicaciones(
 
     PullToRefreshBox(
         isRefreshing = estaRefrescando,
-        onRefresh = { viewModel.obtenerPublicaciones() },
+        onRefresh = { viewModel.obtenerPublicaciones(idEmpresaContexto = idEmpresaActiva) },
         modifier = Modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -78,7 +79,7 @@ fun PantallaPublicaciones(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(text = (estadoUi as EstadoUiPublicaciones.Error).mensaje, color = Color.Red)
-                        Button(onClick = { viewModel.obtenerPublicaciones() }, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
+                        Button(onClick = { viewModel.obtenerPublicaciones(idEmpresaContexto = idEmpresaActiva) }, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
                             Text("Reintentar")
                         }
                     }
@@ -96,7 +97,7 @@ fun PantallaPublicaciones(
                             items(publicaciones) { publicacion ->
                                 TarjetaPublicacion(
                                     publicacion = publicacion,
-                                    alHacerClicEnLike = { viewModel.alternarLike(publicacion.id) },
+                                    alHacerClicEnLike = { viewModel.alternarLike(publicacion.id, idEmpresaActiva) },
                                     alHacerClicEnComentar = {
                                         publicacionSeleccionadaParaComentarios = publicacion
                                     },
@@ -131,6 +132,7 @@ fun PantallaPublicaciones(
         HojaComentariosPublicacion(
             publicacion = pubActual,
             viewModel = viewModel,
+            idEmpresaActiva = idEmpresaActiva,
             alCerrar = { publicacionSeleccionadaParaComentarios = null }
         )
     }
@@ -184,9 +186,10 @@ fun TarjetaPublicacion(
                 modifier = Modifier.padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (publicacion.autorFotoPerfil != null) {
+                val fotoAMostrar = publicacion.fotoAutorAMostrar
+                if (fotoAMostrar != null) {
                     AsyncImage(
-                        model = publicacion.autorFotoPerfil.aUrlCompleta(),
+                        model = fotoAMostrar.aUrlCompleta(),
                         contentDescription = null,
                         modifier = Modifier
                             .size(40.dp)
@@ -195,6 +198,21 @@ fun TarjetaPublicacion(
                         contentScale = ContentScale.Crop,
                         error = androidx.compose.ui.graphics.painter.ColorPainter(AzulPetroleo.copy(alpha = 0.2f))
                     )
+                } else if (publicacion.esPublicacionEmpresa) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(AzulPetroleo.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Business,
+                            contentDescription = "Empresa",
+                            modifier = Modifier.size(24.dp),
+                            tint = AzulPetroleo
+                        )
+                    }
                 } else {
                     Icon(
                         Icons.Default.AccountCircle,
@@ -205,12 +223,29 @@ fun TarjetaPublicacion(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = publicacion.autorNombreUsuario,
-                        fontWeight = FontWeight.Bold,
-                        color = AzulPetroleo,
-                        fontSize = 15.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = publicacion.nombreAutorAMostrar,
+                            fontWeight = FontWeight.Bold,
+                            color = AzulPetroleo,
+                            fontSize = 15.sp
+                        )
+                        if (publicacion.esPublicacionEmpresa) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = GoldColor.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "Empresa",
+                                    fontSize = 10.sp,
+                                    color = AzulPetroleo,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     if (publicacion.ciudadNombre != null) {
                         Text(
                             text = publicacion.ciudadNombre,
@@ -348,6 +383,7 @@ fun TarjetaPublicacion(
 fun HojaComentariosPublicacion(
     publicacion: Publicacion,
     viewModel: ViewModelPublicaciones,
+    idEmpresaActiva: Int? = null,
     alCerrar: () -> Unit
 ) {
     val cadenas = LocalCadenas.current
@@ -460,6 +496,28 @@ fun HojaComentariosPublicacion(
 
             // Barra para escribir comentario
             if (estaAutenticado) {
+                if (idEmpresaActiva != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Business,
+                            contentDescription = null,
+                            tint = GoldColor,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Comentando como empresa",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AzulPetroleo
+                        )
+                    }
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -494,7 +552,7 @@ fun HojaComentariosPublicacion(
                             if (textoComentario.isNotBlank() && !estaEnviando) {
                                 estaEnviando = true
                                 val textoAEnviar = textoComentario
-                                viewModel.agregarComentario(publicacion.id, textoAEnviar) { exito, error ->
+                                viewModel.agregarComentario(publicacion.id, textoAEnviar, idEmpresaActiva) { exito, error ->
                                     estaEnviando = false
                                     if (exito) {
                                         textoComentario = ""
@@ -567,9 +625,10 @@ fun ElementoComentario(comentario: ComentarioPublicacion) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.Top
     ) {
-        if (comentario.autorFotoPerfil != null) {
+        val fotoAMostrar = comentario.fotoAutorAMostrar
+        if (fotoAMostrar != null) {
             AsyncImage(
-                model = comentario.autorFotoPerfil.aUrlCompleta(),
+                model = fotoAMostrar.aUrlCompleta(),
                 contentDescription = null,
                 modifier = Modifier
                     .size(34.dp)
@@ -578,6 +637,21 @@ fun ElementoComentario(comentario: ComentarioPublicacion) {
                 contentScale = ContentScale.Crop,
                 error = androidx.compose.ui.graphics.painter.ColorPainter(AzulPetroleo.copy(alpha = 0.2f))
             )
+        } else if (comentario.esComentarioEmpresa) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(AzulPetroleo.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Business,
+                    contentDescription = "Empresa",
+                    modifier = Modifier.size(20.dp),
+                    tint = AzulPetroleo
+                )
+            }
         } else {
             Icon(
                 Icons.Default.AccountCircle,
@@ -598,12 +672,29 @@ fun ElementoComentario(comentario: ComentarioPublicacion) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = comentario.autorNombreUsuario,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = AzulPetroleo
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = comentario.nombreAutorAMostrar,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = AzulPetroleo
+                    )
+                    if (comentario.esComentarioEmpresa) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            color = GoldColor.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "Empresa",
+                                fontSize = 9.sp,
+                                color = AzulPetroleo,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = formatearFechaComentario(comentario.fechaCreacion),
                     fontSize = 11.sp,

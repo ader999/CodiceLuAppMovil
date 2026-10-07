@@ -14,15 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,6 +47,7 @@ fun PantallaSubirEvento(
     alSubir: (SolicitudEvento, Uri?) -> Unit,
     estaSubiendo: Boolean,
     subidaExitosa: Boolean,
+    nombreEmpresa: String? = null,
     paddingSuperior: Dp = 0.dp
 ) {
     val contexto = LocalContext.current
@@ -292,6 +285,30 @@ fun PantallaSubirEvento(
                 fontWeight = FontWeight.Bold,
                 color = AzulPetroleo
             )
+
+            if (!nombreEmpresa.isNullOrBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(GoldColor.copy(alpha = 0.15f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Business,
+                        contentDescription = null,
+                        tint = AzulPetroleo,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Publicando como: $nombreEmpresa",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AzulPetroleo
+                    )
+                }
+            }
 
             // Selector de Imagen de Portada del Evento
             if (uriImagenSeleccionada == null) {

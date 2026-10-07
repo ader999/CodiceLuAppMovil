@@ -42,16 +42,30 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
     private val _mensajeError = mutableStateOf<String?>(null)
     val mensajeError: State<String?> = _mensajeError
 
+    private var _idEmpresaContexto: Int? = null
+    val idEmpresaContexto: Int? get() = _idEmpresaContexto
+
     init {
         obtenerPublicaciones()
+    }
+
+    fun establecerEmpresaContexto(idEmpresa: Int?, idCiudad: Int? = null) {
+        if (_idEmpresaContexto != idEmpresa) {
+            _idEmpresaContexto = idEmpresa
+            obtenerPublicaciones(idCiudad = idCiudad, idEmpresaContexto = idEmpresa)
+        }
     }
 
     fun obtenerPublicaciones(
         idEvento: Int? = null,
         idCiudad: Int? = null,
         idEmpresa: Int? = null,
-        idAutor: Int? = null
+        idAutor: Int? = null,
+        idEmpresaContexto: Int? = _idEmpresaContexto
     ) {
+        if (idEmpresaContexto != null) {
+            _idEmpresaContexto = idEmpresaContexto
+        }
         val sesion = administradorSesion.obtenerSesion()
         val token = sesion?.let { "Bearer ${it.tokens.access}" }
 
@@ -60,6 +74,7 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
             try {
                 val respuesta = servicioApi.obtenerPublicaciones(
                     token = token,
+                    idEmpresaHeader = _idEmpresaContexto?.toString(),
                     idEvento = idEvento,
                     idCiudad = idCiudad,
                     idEmpresa = idEmpresa,
@@ -76,19 +91,23 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
         }
     }
 
-    fun alternarLike(idPublicacion: Int) {
+    fun alternarLike(idPublicacion: Int, idEmpresa: Int? = _idEmpresaContexto) {
         val sesion = administradorSesion.obtenerSesion() ?: return
         val token = "Bearer ${sesion.tokens.access}"
 
         viewModelScope.launch {
             try {
-                val respuesta = servicioApi.alternarLike(token, idPublicacion)
+                val respuesta = servicioApi.alternarLike(
+                    token = token,
+                    idEmpresaHeader = idEmpresa?.toString(),
+                    idPublicacion = idPublicacion
+                )
                 if (respuesta.isSuccessful) {
                     val estadoActual = _estadoUi.value
                     if (estadoActual is EstadoUiPublicaciones.Exito) {
+                        val resultado = respuesta.body()!!
                         val listaActualizada = estadoActual.publicaciones.map {
                             if (it.id == idPublicacion) {
-                                val resultado = respuesta.body()!!
                                 it.copy(totalLikes = resultado.total_likes, usuarioHaDadoLike = resultado.ha_dado_like)
                             } else it
                         }
@@ -133,6 +152,7 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
     fun agregarComentario(
         idPublicacion: Int,
         contenido: String,
+        idEmpresa: Int? = _idEmpresaContexto,
         alTerminar: (exito: Boolean, mensaje: String?) -> Unit
     ) {
         val sesion = administradorSesion.obtenerSesion()
@@ -151,8 +171,9 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
             try {
                 val respuesta = servicioApi.agregarComentario(
                     token = token,
+                    idEmpresaHeader = idEmpresa?.toString(),
                     idPublicacion = idPublicacion,
-                    solicitud = SolicitudComentario(contenido = contenido.trim())
+                    solicitud = SolicitudComentario(contenido = contenido.trim(), empresa = idEmpresa)
                 )
                 if (respuesta.isSuccessful && respuesta.body() != null) {
                     val nuevoComentario = respuesta.body()!!
@@ -215,6 +236,7 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
 
                 val respuesta = servicioApi.crearPublicacion(
                     token = token,
+                    idEmpresaHeader = idEmpresa?.toString(),
                     descripcion = cuerpoDescripcion,
                     idCiudad = idCiudad,
                     idEmpresa = idEmpresa,
@@ -228,7 +250,8 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
                     _subidaExitosa.value = true
                     obtenerPublicaciones()
                 } else {
-                    _mensajeError.value = "Error del servidor: ${respuesta.code()} ${respuesta.message()}"
+                    val cuerpoError = try { respuesta.errorBody()?.string() } catch (e: Exception) { null }
+                    _mensajeError.value = parsearMensajeError(cuerpoError, respuesta.code(), respuesta.message())
                 }
             } catch (e: Exception) {
                 _mensajeError.value = "Error de red o procesamiento: ${e.localizedMessage}"
@@ -272,6 +295,34 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
         bitmapOriginal.recycle()
         
         archivo
+    }
+
+    private fun parsearMensajeError(cuerpoError: String?, codigo: Int, mensajeHttp: String): String {
+        if (cuerpoError.isNullOrBlank()) return "Error del servidor: $codigo $mensajeHttp"
+        return try {
+            val json = org.json.JSONObject(cuerpoError)
+            if (json.has("detail")) {
+                json.getString("detail")
+            } else if (json.has("error")) {
+                json.getString("error")
+            } else {
+                val detalles = mutableListOf<String>()
+                val iterador = json.keys()
+                while (iterador.hasNext()) {
+                    val clave = iterador.next()
+                    val valor = json.get(clave)
+                    if (valor is org.json.JSONArray) {
+                        val mensajes = (0 until valor.length()).map { valor.getString(it) }.joinToString(", ")
+                        detalles.add("$clave: $mensajes")
+                    } else {
+                        detalles.add("$clave: $valor")
+                    }
+                }
+                if (detalles.isNotEmpty()) detalles.joinToString("\n") else "Error del servidor: $codigo $mensajeHttp"
+            }
+        } catch (_: Exception) {
+            "Error del servidor: $codigo $mensajeHttp"
+        }
     }
 
     fun reiniciarEstadoSubida() {

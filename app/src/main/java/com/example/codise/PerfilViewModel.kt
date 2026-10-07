@@ -56,13 +56,16 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     }
                 }
 
-                // Si la consulta por ID está vacía, consultar todas y filtrar por ID o nombre de usuario
+                // Si la consulta por ID está vacía, consultar todas y filtrar por ID, nombre de usuario o correo
                 if (empresas.isEmpty()) {
                     val respTodas = servicioApi.obtenerEmpresas()
                     if (respTodas.isSuccessful && respTodas.body() != null) {
+                        val correoUsuario = usuario.correoElectronico?.trim()
+                        val usuarioNombre = usuario.nombreUsuario?.trim()
                         empresas = respTodas.body()!!.filter { emp ->
                             (usuario.id != null && emp.usuario == usuario.id) ||
-                            (!usuario.nombreUsuario.isNullOrBlank() && emp.usuarioNombreUsuario.equals(usuario.nombreUsuario, ignoreCase = true))
+                            (!usuarioNombre.isNullOrBlank() && emp.usuarioNombreUsuario?.trim().equals(usuarioNombre, ignoreCase = true)) ||
+                            (!correoUsuario.isNullOrBlank() && emp.emailContacto.trim().equals(correoUsuario, ignoreCase = true))
                         }
                     }
                 }

@@ -87,7 +87,8 @@ interface ServicioApi {
     @POST("api/eventos/")
     suspend fun crearEvento(
         @Header("Authorization") token: String,
-        @Body evento: SolicitudEvento
+        @Body evento: SolicitudEvento,
+        @Header("X-Company-Id") companyId: Int? = null
     ): Response<Evento>
 
     @Multipart
@@ -107,7 +108,8 @@ interface ServicioApi {
         @Part("latitud") latitud: RequestBody? = null,
         @Part("longitud") longitud: RequestBody? = null,
         @Part("esta_activo") estaActivo: RequestBody? = null,
-        @Part imagen: MultipartBody.Part? = null
+        @Part imagen: MultipartBody.Part? = null,
+        @Header("X-Company-Id") companyId: Int? = null
     ): Response<Evento>
 
     @POST("api/eventos/{id}/asistir/")
@@ -130,6 +132,7 @@ interface ServicioApi {
     @GET("api/publicaciones/")
     suspend fun obtenerPublicaciones(
         @Header("Authorization") token: String? = null,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null,
         @Query("evento") idEvento: Int? = null,
         @Query("ciudad") idCiudad: Int? = null,
         @Query("empresa") idEmpresa: Int? = null,
@@ -140,6 +143,7 @@ interface ServicioApi {
     @POST("api/publicaciones/")
     suspend fun crearPublicacion(
         @Header("Authorization") token: String,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null,
         @Part("descripcion") descripcion: RequestBody,
         @Part("ciudad") idCiudad: Int? = null,
         @Part("empresa") idEmpresa: Int? = null,
@@ -152,6 +156,7 @@ interface ServicioApi {
     @POST("api/publicaciones/{id}/like/")
     suspend fun alternarLike(
         @Header("Authorization") token: String,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null,
         @Path("id") idPublicacion: Int
     ): Response<RespuestaLike>
 
@@ -163,6 +168,7 @@ interface ServicioApi {
     @POST("api/publicaciones/{id}/comentarios/")
     suspend fun agregarComentario(
         @Header("Authorization") token: String,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null,
         @Path("id") idPublicacion: Int,
         @Body solicitud: SolicitudComentario
     ): Response<ComentarioPublicacion>

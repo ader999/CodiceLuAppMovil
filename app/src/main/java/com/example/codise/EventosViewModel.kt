@@ -80,9 +80,10 @@ class ViewModelEventos(aplicacion: Application) : AndroidViewModel(aplicacion) {
         }
     }
 
-    fun subirEvento(solicitudEvento: SolicitudEvento, uriImagen: Uri? = null) {
+    fun subirEvento(solicitudEvento: SolicitudEvento, uriImagen: Uri? = null, idEmpresaContexto: Int? = null) {
         val sesion = administradorSesion.obtenerSesion() ?: return
         val token = "Bearer ${sesion.tokens.access}"
+        val empresaId = idEmpresaContexto ?: solicitudEvento.empresa
 
         viewModelScope.launch {
             _estaSubiendo.value = true
@@ -99,7 +100,7 @@ class ViewModelEventos(aplicacion: Application) : AndroidViewModel(aplicacion) {
                         titulo = solicitudEvento.titulo.toRequestBody(textMedia),
                         descripcion = solicitudEvento.descripcion.toRequestBody(textMedia),
                         ciudad = solicitudEvento.ciudad.toString().toRequestBody(textMedia),
-                        empresa = solicitudEvento.empresa?.toString()?.toRequestBody(textMedia),
+                        empresa = empresaId?.toString()?.toRequestBody(textMedia),
                         fechaInicio = solicitudEvento.fechaInicio.toRequestBody(textMedia),
                         fechaFin = solicitudEvento.fechaFin.toRequestBody(textMedia),
                         ubicacion = solicitudEvento.ubicacion.toRequestBody(textMedia),
@@ -109,10 +110,11 @@ class ViewModelEventos(aplicacion: Application) : AndroidViewModel(aplicacion) {
                         latitud = solicitudEvento.latitud?.toString()?.toRequestBody(textMedia),
                         longitud = solicitudEvento.longitud?.toString()?.toRequestBody(textMedia),
                         estaActivo = solicitudEvento.estaActivo.toString().toRequestBody(textMedia),
-                        imagen = parteImagen
+                        imagen = parteImagen,
+                        companyId = empresaId
                     )
                 } else {
-                    servicioApi.crearEvento(token, solicitudEvento)
+                    servicioApi.crearEvento(token, solicitudEvento.copy(empresa = empresaId), companyId = empresaId)
                 }
 
                 if (respuesta.isSuccessful) {

@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -527,6 +530,7 @@ fun AplicacionAutenticada(
                         mostrarFormulario = mostrarFormularioPerfil,
                         alAlternarFormulario = { mostrarFormularioPerfil = !mostrarFormularioPerfil },
                         empresasUsuario = empresasUsuario,
+                        alSeleccionarPerfil = { viewModelPerfil.cambiarPerfilActivo(it) },
                         idiomaActual = idiomaActual,
                         alCambiarIdioma = { mostrarDialogoIdioma = true },
                         paddingSuperior = paddingSuperior
@@ -571,7 +575,7 @@ fun AplicacionAutenticada(
                 "events" -> {
                     PantallaEventos(
                         viewModel = viewModelEventos,
-                        puedeSubir = usuarioActual.esProtagonista || empresasUsuario.isNotEmpty(),
+                        puedeSubir = perfilActivo is PerfilActivo.EmpresaActiva,
                         alHacerClicEnSubir = { pantallaActual = "upload_event" },
                         alHacerClicEnEvento = { evento ->
                             eventoSeleccionado = evento
@@ -592,11 +596,13 @@ fun AplicacionAutenticada(
                 }
                 "publications" -> {
                     val idCiudadSeleccionada = viewModelPrincipal.ciudadSeleccionada?.id
-                    LaunchedEffect(idCiudadSeleccionada) {
-                        viewModelPublicaciones.obtenerPublicaciones(idCiudad = idCiudadSeleccionada)
+                    val idEmpresaActiva = (perfilActivo as? PerfilActivo.EmpresaActiva)?.empresa?.id
+                    LaunchedEffect(idCiudadSeleccionada, idEmpresaActiva) {
+                        viewModelPublicaciones.establecerEmpresaContexto(idEmpresaActiva, idCiudadSeleccionada)
                     }
                     PantallaPublicaciones(
                         viewModel = viewModelPublicaciones,
+                        idEmpresaActiva = idEmpresaActiva,
                         alHacerClicEnSubir = { pantallaActual = "upload_publication" },
                         paddingSuperior = paddingSuperior
                     )
@@ -627,25 +633,31 @@ fun AplicacionAutenticada(
                     )
                 }
                 "upload_event" -> {
-                    val ciudades by viewModelPrincipal.ciudades
-                    val estaSubiendo by viewModelEventos.estaSubiendo
-                    val subidaExitosa by viewModelEventos.subidaExitosa
-                    PantallaSubirEvento(
-                        ciudades = ciudades,
-                        alVolver = { 
+                    val empresaActiva = (perfilActivo as? PerfilActivo.EmpresaActiva)?.empresa
+                    if (empresaActiva == null) {
+                        LaunchedEffect(Unit) {
                             pantallaActual = "events"
-                            viewModelEventos.reiniciarEstadoSubida()
-                        },
-                        alSubir = { solicitud, uriImagen -> 
-                            val solicitudModificada = if (perfilActivo is PerfilActivo.EmpresaActiva) {
-                                solicitud.copy(empresa = (perfilActivo as PerfilActivo.EmpresaActiva).empresa.id)
-                            } else solicitud
-                            viewModelEventos.subirEvento(solicitudModificada, uriImagen)
-                        },
-                        estaSubiendo = estaSubiendo,
-                        subidaExitosa = subidaExitosa,
-                        paddingSuperior = paddingSuperior
-                    )
+                        }
+                    } else {
+                        val ciudades by viewModelPrincipal.ciudades
+                        val estaSubiendo by viewModelEventos.estaSubiendo
+                        val subidaExitosa by viewModelEventos.subidaExitosa
+                        PantallaSubirEvento(
+                            ciudades = ciudades,
+                            alVolver = { 
+                                pantallaActual = "events"
+                                viewModelEventos.reiniciarEstadoSubida()
+                            },
+                            alSubir = { solicitud, uriImagen -> 
+                                val solicitudModificada = solicitud.copy(empresa = empresaActiva.id)
+                                viewModelEventos.subirEvento(solicitudModificada, uriImagen, empresaActiva.id)
+                            },
+                            estaSubiendo = estaSubiendo,
+                            subidaExitosa = subidaExitosa,
+                            nombreEmpresa = empresaActiva.nombre,
+                            paddingSuperior = paddingSuperior
+                        )
+                    }
                 }
                 "assistant" -> {
                     val todosLosPuntos = remember(ciudades) {
@@ -812,7 +824,7 @@ fun BarraSuperior(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .clickable {
-                            if (empresasUsuario.isNotEmpty()) {
+                            if (empresasUsuario.isNotEmpty() || perfilActivo is PerfilActivo.EmpresaActiva) {
                                 mostrarMenuPerfil = true
                             } else {
                                 alHacerClicEnPerfil()
@@ -834,7 +846,7 @@ fun BarraSuperior(
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Default.Person,
+                            imageVector = if (perfilActivo is PerfilActivo.EmpresaActiva) Icons.Default.Business else Icons.Default.Person,
                             contentDescription = "Perfil",
                             tint = GoldColor,
                             modifier = Modifier
@@ -846,38 +858,249 @@ fun BarraSuperior(
                 
                 DropdownMenu(
                     expanded = mostrarMenuPerfil,
-                    onDismissRequest = { mostrarMenuPerfil = false }
+                    onDismissRequest = { mostrarMenuPerfil = false },
+                    offset = DpOffset(x = (-8).dp, y = 6.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    containerColor = AzulPetroleo,
+                    border = BorderStroke(1.2.dp, GoldColor.copy(alpha = 0.55f)),
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.widthIn(min = 230.dp, max = 285.dp)
                 ) {
+                    val esUsuarioActivo = perfilActivo is PerfilActivo.UsuarioActivo
+
+                    Text(
+                        text = when (idiomaActual) {
+                            IdiomaApp.INGLES -> "SWITCH PROFILE"
+                            IdiomaApp.CHINO -> "切换身份"
+                            else -> "CAMBIAR PERFIL"
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldColor.copy(alpha = 0.85f),
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 4.dp)
+                    )
+
                     DropdownMenuItem(
-                        text = { Text("Mi Perfil de Usuario", fontWeight = if (perfilActivo is PerfilActivo.UsuarioActivo) FontWeight.Bold else FontWeight.Normal) },
+                        modifier = Modifier
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (esUsuarioActivo) GoldColor.copy(alpha = 0.18f)
+                                else Color.Transparent
+                            ),
+                        text = {
+                            Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                                Text(
+                                    text = when (idiomaActual) {
+                                        IdiomaApp.INGLES -> "My Personal Profile"
+                                        IdiomaApp.CHINO -> "个人主页"
+                                        else -> "Mi Perfil Personal"
+                                    },
+                                    fontWeight = if (esUsuarioActivo) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    color = if (esUsuarioActivo) GoldColor else BlancoBase
+                                )
+                                Text(
+                                    text = when (idiomaActual) {
+                                        IdiomaApp.INGLES -> "Personal account"
+                                        IdiomaApp.CHINO -> "个人账户"
+                                        else -> "Cuenta personal"
+                                    },
+                                    fontSize = 11.sp,
+                                    color = if (esUsuarioActivo) GoldColor.copy(alpha = 0.8f) else BlancoBase.copy(alpha = 0.65f)
+                                )
+                            }
+                        },
                         onClick = {
                             alCambiarPerfil(PerfilActivo.UsuarioActivo)
                             mostrarMenuPerfil = false
                         },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+                        leadingIcon = {
+                            if (!fotoPerfil.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = fotoPerfil.aUrlCompleta(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .border(1.5.dp, GoldColor, CircleShape),
+                                    contentScale = ContentScale.Crop,
+                                    error = ColorPainter(GoldColor.copy(alpha = 0.3f))
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(GoldColor.copy(alpha = 0.18f))
+                                        .border(1.2.dp, GoldColor.copy(alpha = 0.6f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = GoldColor,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        },
+                        trailingIcon = if (esUsuarioActivo) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Activo",
+                                    tint = GoldColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else null,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        colors = MenuDefaults.itemColors(
+                            textColor = BlancoBase,
+                            leadingIconColor = GoldColor,
+                            trailingIconColor = GoldColor
+                        )
                     )
-                    
+
                     empresasUsuario.forEach { empresa ->
                         val esActivo = perfilActivo is PerfilActivo.EmpresaActiva && perfilActivo.empresa.id == empresa.id
                         DropdownMenuItem(
-                            text = { Text(empresa.nombre, fontWeight = if (esActivo) FontWeight.Bold else FontWeight.Normal) },
+                            modifier = Modifier
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (esActivo) GoldColor.copy(alpha = 0.18f)
+                                    else Color.Transparent
+                                ),
+                            text = {
+                                Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                                    Text(
+                                        text = empresa.nombre,
+                                        fontWeight = if (esActivo) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 14.sp,
+                                        color = if (esActivo) GoldColor else BlancoBase,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = empresa.categoria.ifBlank {
+                                            when (idiomaActual) {
+                                                IdiomaApp.INGLES -> "Business"
+                                                IdiomaApp.CHINO -> "企业"
+                                                else -> "Empresa"
+                                            }
+                                        },
+                                        fontSize = 11.sp,
+                                        color = if (esActivo) GoldColor.copy(alpha = 0.8f) else BlancoBase.copy(alpha = 0.65f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            },
                             onClick = {
                                 alCambiarPerfil(PerfilActivo.EmpresaActiva(empresa))
                                 mostrarMenuPerfil = false
                             },
-                            leadingIcon = { Icon(Icons.Default.Business, contentDescription = null) }
+                            leadingIcon = {
+                                if (!empresa.imagenPortada.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = empresa.imagenPortada.aUrlCompleta(),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .border(1.5.dp, GoldColor, CircleShape),
+                                        contentScale = ContentScale.Crop,
+                                        error = ColorPainter(GoldColor.copy(alpha = 0.3f))
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(GoldColor.copy(alpha = 0.18f))
+                                            .border(1.2.dp, GoldColor.copy(alpha = 0.6f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Business,
+                                            contentDescription = null,
+                                            tint = GoldColor,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            trailingIcon = if (esActivo) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Activo",
+                                        tint = GoldColor,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            } else null,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            colors = MenuDefaults.itemColors(
+                                textColor = BlancoBase,
+                                leadingIconColor = GoldColor,
+                                trailingIconColor = GoldColor
+                            )
                         )
                     }
 
-                    HorizontalDivider()
-                    
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        color = GoldColor.copy(alpha = 0.25f),
+                        thickness = 0.8.dp
+                    )
+
                     DropdownMenuItem(
-                        text = { Text("Ajustes de Perfil") },
+                        modifier = Modifier
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        text = {
+                            Text(
+                                text = when (idiomaActual) {
+                                    IdiomaApp.INGLES -> "Profile Settings"
+                                    IdiomaApp.CHINO -> "个人设置"
+                                    else -> "Ajustes de Perfil"
+                                },
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = BlancoBase
+                            )
+                        },
                         onClick = {
                             mostrarMenuPerfil = false
                             alHacerClicEnPerfil()
                         },
-                        leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+                        leadingIcon = {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(GoldColor.copy(alpha = 0.18f))
+                                    .border(1.2.dp, GoldColor.copy(alpha = 0.6f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = null,
+                                    tint = GoldColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        colors = MenuDefaults.itemColors(
+                            textColor = BlancoBase,
+                            leadingIconColor = GoldColor,
+                            trailingIconColor = GoldColor
+                        )
                     )
                 }
             }
