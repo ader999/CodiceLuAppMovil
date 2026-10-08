@@ -118,7 +118,16 @@ data class TextosApp(
     val continuarConGoogle: String,
     val soyTurista: String,
     val soyProtagonista: String,
-    val seleccionaSoloUno: String
+    val seleccionaSoloUno: String,
+    val correoOusuario: String,
+    val errorCampoRequerido: String,
+    val errorCorreoInvalido: String,
+    val errorContrasenaCorta: String,
+    val errorSeleccionarRol: String,
+    val errorConexionRed: String,
+    val errorCredenciales: String,
+    val errorServidor: String,
+    val errorDatos: String
 )
 
 val CadenasEspanol = TextosApp(
@@ -228,7 +237,16 @@ val CadenasEspanol = TextosApp(
     continuarConGoogle = "Continuar con Google",
     soyTurista = "Soy Turista",
     soyProtagonista = "Soy Protagonista / Emprendedor",
-    seleccionaSoloUno = "Selecciona solo una opción"
+    seleccionaSoloUno = "Selecciona solo una opción",
+    correoOusuario = "Correo Electrónico o Usuario",
+    errorCampoRequerido = "Este campo es obligatorio",
+    errorCorreoInvalido = "Ingresa un correo electrónico válido",
+    errorContrasenaCorta = "La contraseña debe tener al menos 6 caracteres",
+    errorSeleccionarRol = "Por favor selecciona si eres Turista o Protagonista",
+    errorConexionRed = "No se pudo conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.",
+    errorCredenciales = "Usuario o contraseña incorrectos. Verifica tus datos.",
+    errorServidor = "El servidor no está disponible en este momento. Intenta de nuevo más tarde.",
+    errorDatos = "Error al procesar la información. Intenta nuevamente."
 )
 
 val CadenasIngles = TextosApp(
@@ -338,7 +356,16 @@ val CadenasIngles = TextosApp(
     continuarConGoogle = "Continue with Google",
     soyTurista = "I am a Tourist",
     soyProtagonista = "I am an Organizer / Entrepreneur",
-    seleccionaSoloUno = "Please select only one option"
+    seleccionaSoloUno = "Please select only one option",
+    correoOusuario = "Email or Username",
+    errorCampoRequerido = "This field is required",
+    errorCorreoInvalido = "Please enter a valid email address",
+    errorContrasenaCorta = "Password must be at least 6 characters",
+    errorSeleccionarRol = "Please select whether you are a Tourist or Organizer",
+    errorConexionRed = "Could not connect to server. Please check your internet connection.",
+    errorCredenciales = "Incorrect username or password. Please verify your credentials.",
+    errorServidor = "The server is currently unavailable. Please try again later.",
+    errorDatos = "Error processing server response. Please try again later."
 )
 
 val CadenasChino = TextosApp(
@@ -448,7 +475,16 @@ val CadenasChino = TextosApp(
     continuarConGoogle = "使用 Google 继续",
     soyTurista = "我是游客",
     soyProtagonista = "我是创业者 / 主办方",
-    seleccionaSoloUno = "请仅选择一项"
+    seleccionaSoloUno = "请仅选择一项",
+    correoOusuario = "电子邮箱或用户名",
+    errorCampoRequerido = "此项为必填项",
+    errorCorreoInvalido = "请输入有效的电子邮箱地址",
+    errorContrasenaCorta = "密码长度必须至少为 6 个字符",
+    errorSeleccionarRol = "请选择您是游客还是创业者",
+    errorConexionRed = "无法连接到服务器。请检查您的网络连接并重试。",
+    errorCredenciales = "用户名或密码不正确。请核对您的信息。",
+    errorServidor = "服务器当前不可用。请稍后重试。",
+    errorDatos = "处理数据时出错。请稍后重试。"
 )
 
 object CadenasIdiomas {

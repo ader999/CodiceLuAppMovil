@@ -11,6 +11,7 @@ import com.example.codise.data.SolicitudAuthGoogle
 import com.example.codise.data.AdministradorSesion
 import com.example.codise.data.Usuario
 import com.example.codise.utils.AutenticadorGoogle
+import com.example.codise.utils.ManejadorErrores
 import com.example.codise.utils.ResultadoGoogleAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +36,12 @@ class ViewModelLogin(aplicacion: Application) : AndroidViewModel(aplicacion) {
         }
     }
 
+    fun limpiarError() {
+        if (_estadoUi.value is EstadoUiLogin.Error) {
+            _estadoUi.value = EstadoUiLogin.Inactivo
+        }
+    }
+
     fun iniciarSesion(nombreUsuario: String, contrasena: String) {
         viewModelScope.launch {
             _estadoUi.value = EstadoUiLogin.Cargando
@@ -45,10 +52,14 @@ class ViewModelLogin(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     administradorSesion.guardarSesion(respuestaAuth)
                     _estadoUi.value = EstadoUiLogin.Exito(respuestaAuth)
                 } else {
-                    _estadoUi.value = EstadoUiLogin.Error("Error: ${respuesta.code()} - ${respuesta.message()}")
+                    val mensaje = ManejadorErrores.obtenerMensajeErrorHttp(
+                        respuesta = respuesta,
+                        tipoOperacion = ManejadorErrores.TipoOperacion.LOGIN
+                    )
+                    _estadoUi.value = EstadoUiLogin.Error(mensaje)
                 }
             } catch (e: Exception) {
-                _estadoUi.value = EstadoUiLogin.Error(e.message ?: "Error desconocido")
+                _estadoUi.value = EstadoUiLogin.Error(ManejadorErrores.obtenerMensajeError(e))
             }
         }
     }
@@ -63,10 +74,14 @@ class ViewModelLogin(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     administradorSesion.guardarSesion(respuestaAuth)
                     _estadoUi.value = EstadoUiLogin.Exito(respuestaAuth)
                 } else {
-                    _estadoUi.value = EstadoUiLogin.Error("Error: ${respuesta.code()} - ${respuesta.message()}")
+                    val mensaje = ManejadorErrores.obtenerMensajeErrorHttp(
+                        respuesta = respuesta,
+                        tipoOperacion = ManejadorErrores.TipoOperacion.REGISTRO
+                    )
+                    _estadoUi.value = EstadoUiLogin.Error(mensaje)
                 }
             } catch (e: Exception) {
-                _estadoUi.value = EstadoUiLogin.Error(e.message ?: "Error desconocido")
+                _estadoUi.value = EstadoUiLogin.Error(ManejadorErrores.obtenerMensajeError(e))
             }
         }
     }
@@ -84,10 +99,14 @@ class ViewModelLogin(aplicacion: Application) : AndroidViewModel(aplicacion) {
                             administradorSesion.guardarSesion(respuestaAuth)
                             _estadoUi.value = EstadoUiLogin.Exito(respuestaAuth)
                         } else {
-                            _estadoUi.value = EstadoUiLogin.Error("Error: ${respuesta.code()} - ${respuesta.message()}")
+                            val mensaje = ManejadorErrores.obtenerMensajeErrorHttp(
+                                respuesta = respuesta,
+                                tipoOperacion = ManejadorErrores.TipoOperacion.LOGIN
+                            )
+                            _estadoUi.value = EstadoUiLogin.Error(mensaje)
                         }
                     } catch (e: Exception) {
-                        _estadoUi.value = EstadoUiLogin.Error(e.localizedMessage ?: "Error al conectar con el servidor")
+                        _estadoUi.value = EstadoUiLogin.Error(ManejadorErrores.obtenerMensajeError(e))
                     }
                 }
                 is ResultadoGoogleAuth.Error -> {

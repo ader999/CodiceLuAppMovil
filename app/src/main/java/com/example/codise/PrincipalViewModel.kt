@@ -108,10 +108,10 @@ class ViewModelPrincipal(aplicacion: Application) : AndroidViewModel(aplicacion)
                             puntoVisitadoDao.marcarComoVisitado(PuntoVisitado(puntoInteresId, estaValidado = true))
                         }
                     } else {
-                        _error.value = "Error al sincronizar con la nube: ${respuesta.code()}"
+                        _error.value = com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta)
                     }
                 } catch (e: Exception) {
-                    _error.value = "Error de red al sincronizar: ${e.message}"
+                    _error.value = com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e)
                 }
             }
         }
@@ -132,10 +132,10 @@ class ViewModelPrincipal(aplicacion: Application) : AndroidViewModel(aplicacion)
                     _ciudades.value = respuesta.body() ?: emptyList()
                     ultimaHoraObtencion = horaActual
                 } else {
-                    _error.value = "Error: ${respuesta.code()} ${respuesta.message()}"
+                    _error.value = com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta)
                 }
             } catch (e: Exception) {
-                _error.value = "Error de Red: ${e.message}"
+                _error.value = com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e)
             } finally {
                 _estaCargando.value = false
             }

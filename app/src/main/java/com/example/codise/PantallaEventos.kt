@@ -43,6 +43,7 @@ fun PantallaEventos(
     modoVista: Int, // 2 para Lista, 3 para Calendario
     paddingSuperior: Dp = 0.dp
 ) {
+    val cadenas = LocalCadenas.current
     val estadoUi by viewModel.estadoUi
 
     Scaffold(
@@ -66,11 +67,55 @@ fun PantallaEventos(
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = GoldColor)
                 }
                 is EstadoUiEventos.Error -> {
-                    Text(
-                        text = (estadoUi as EstadoUiEventos.Error).mensaje,
-                        color = Color.Red,
-                        modifier = Modifier.align(Alignment.Center).padding(top = paddingSuperior)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(top = paddingSuperior)
+                            .padding(horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = (estadoUi as EstadoUiEventos.Error).mensaje,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { viewModel.obtenerEventos() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(cadenas.reintentar, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
                 }
                 is EstadoUiEventos.Exito -> {
                     val eventos = (estadoUi as EstadoUiEventos.Exito).eventos

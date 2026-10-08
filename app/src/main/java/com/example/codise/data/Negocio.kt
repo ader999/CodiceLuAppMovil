@@ -15,6 +15,8 @@ data class Empresa(
     val categoria: String,
     val direccion: String,
     @SerializedName("telefono_contacto") val telefonoContacto: String,
+    @SerializedName("numero_whatsapp") val numeroWhatsapp: String? = null,
+    @SerializedName("link_whatsapp") val linkWhatsapp: String? = null,
     @SerializedName("email_contacto") val emailContacto: String,
     @SerializedName("sitio_web") val sitioWeb: String?,
     @SerializedName("imagen_portada") val imagenPortada: String? = null,
@@ -22,7 +24,10 @@ data class Empresa(
     val longitud: Double,
     @SerializedName("acepta_inversiones") val aceptaInversiones: Boolean,
     @SerializedName("fecha_creacion") val fechaCreacion: String? = null
-)
+) {
+    val whatsappEfectivo: String?
+        get() = numeroWhatsapp?.takeIf { it.isNotBlank() } ?: telefonoContacto.takeIf { it.isNotBlank() }
+}
 
 data class OpcionCategoriaEmpresa(
     val clave: String,

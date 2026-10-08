@@ -34,7 +34,7 @@ class GestorIdioma private constructor(contexto: Context) {
     private val preferencias: SharedPreferences =
         contexto.getSharedPreferences(NOMBRE_PREF, Context.MODE_PRIVATE)
 
-    private val _idiomaActual = MutableStateFlow(obtenerIdiomaInicial())
+    private val _idiomaActual = MutableStateFlow(obtenerIdiomaInicial().also { com.example.codise.utils.ManejadorErrores.idiomaActual = it })
     val idiomaActual: StateFlow<IdiomaApp> = _idiomaActual
 
     private fun obtenerIdiomaInicial(): IdiomaApp {
@@ -49,6 +49,7 @@ class GestorIdioma private constructor(contexto: Context) {
     fun cambiarIdioma(nuevoIdioma: IdiomaApp) {
         preferencias.edit().putString(CLAVE_IDIOMA, nuevoIdioma.codigo).apply()
         _idiomaActual.value = nuevoIdioma
+        com.example.codise.utils.ManejadorErrores.idiomaActual = nuevoIdioma
     }
 
     fun obtenerCabeceraAcceptLanguage(): String {

@@ -143,10 +143,10 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     
                     _estadoUi.value = EstadoUiPerfil.Exito(usuarioActualizado)
                 } else {
-                    _estadoUi.value = EstadoUiPerfil.Error("Error: ${respuesta.code()} - ${respuesta.message()}")
+                    _estadoUi.value = EstadoUiPerfil.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
                 }
             } catch (e: Exception) {
-                _estadoUi.value = EstadoUiPerfil.Error(e.message ?: "Error desconocido")
+                _estadoUi.value = EstadoUiPerfil.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
             }
         }
     }
@@ -168,10 +168,10 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     }
                     _estadoUi.value = EstadoUiPerfil.Exito(usuarioActualizado)
                 } else {
-                    _estadoUi.value = EstadoUiPerfil.Error("Error al actualizar la foto: ${respuesta.code()} - ${respuesta.message()}")
+                    _estadoUi.value = EstadoUiPerfil.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
                 }
             } catch (e: Exception) {
-                _estadoUi.value = EstadoUiPerfil.Error(e.message ?: "Error al procesar la imagen")
+                _estadoUi.value = EstadoUiPerfil.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
             }
         }
     }
@@ -239,12 +239,10 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
 
                     _estadoUiEmpresa.value = EstadoUiEmpresa.Exito(empresaRegistrada)
                 } else {
-                    val cuerpoError = respuesta.errorBody()?.string()
-                    val mensajeError = parsearMensajeError(cuerpoError, respuesta.code(), respuesta.message())
-                    _estadoUiEmpresa.value = EstadoUiEmpresa.Error(mensajeError)
+                    _estadoUiEmpresa.value = EstadoUiEmpresa.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
                 }
             } catch (e: Exception) {
-                _estadoUiEmpresa.value = EstadoUiEmpresa.Error(e.message ?: "Error desconocido")
+                _estadoUiEmpresa.value = EstadoUiEmpresa.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
             }
         }
     }

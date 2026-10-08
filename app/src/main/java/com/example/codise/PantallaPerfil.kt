@@ -35,8 +35,11 @@ import com.example.codise.data.Empresa
 import com.example.codise.data.IdiomaApp
 import com.example.codise.data.OpcionCategoriaEmpresa
 import com.example.codise.data.Usuario
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import com.example.codise.ui.theme.*
 import com.example.codise.utils.LocalCadenas
+import com.example.codise.utils.UtilidadesContacto
 import com.example.codise.utils.aUrlCompleta
 
 @Composable
@@ -61,6 +64,7 @@ fun ContenidoPerfil(
     paddingSuperior: Dp = 0.dp
 ) {
     val cadenas = LocalCadenas.current
+    val contexto = LocalContext.current
     var nombre by remember(usuario) { mutableStateOf(usuario.nombre.orEmpty()) }
     var apellido by remember(usuario) { mutableStateOf(usuario.apellido.orEmpty()) }
     var nombreUsuario by remember(usuario) { mutableStateOf(usuario.nombreUsuario.orEmpty()) }
@@ -278,6 +282,78 @@ fun ContenidoPerfil(
                             titulo = cadenas.telefono,
                             valor = empresaActiva.telefonoContacto.ifBlank { "No registrado" }
                         )
+                        val whatsappActivo = empresaActiva.whatsappEfectivo
+                        if (!whatsappActivo.isNullOrBlank()) {
+                            HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF25D366).copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_whatsapp),
+                                            contentDescription = "WhatsApp",
+                                            tint = Color(0xFF128C7E),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "WhatsApp",
+                                            fontSize = 12.sp,
+                                            color = NegroPuro.copy(alpha = 0.6f)
+                                        )
+                                        Text(
+                                            text = whatsappActivo,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = AzulPetroleo
+                                        )
+                                    }
+                                }
+                                Button(
+                                    onClick = {
+                                        UtilidadesContacto.abrirWhatsApp(
+                                            contexto,
+                                            empresaActiva.linkWhatsapp?.takeIf { it.isNotBlank() } ?: whatsappActivo,
+                                            "Hola, me comunico con ${empresaActiva.nombre} a través de la app Códice..."
+                                        )
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF25D366),
+                                        contentColor = Color.White
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_whatsapp),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Abrir",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         HorizontalDivider(color = GrisClaro.copy(alpha = 0.4f), thickness = 0.5.dp)
                         ElementoDetallePerfil(
                             icono = Icons.Default.LocationOn,
@@ -835,6 +911,41 @@ fun TarjetaEmpresaUsuario(
                             text = empresa.emailContacto,
                             color = NegroPuro.copy(alpha = 0.6f),
                             fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+            val whatsappEmp = empresa.whatsappEfectivo
+            if (!whatsappEmp.isNullOrBlank()) {
+                val contexto = LocalContext.current
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFF25D366).copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.clickable {
+                        UtilidadesContacto.abrirWhatsApp(
+                            contexto,
+                            empresa.linkWhatsapp?.takeIf { it.isNotBlank() } ?: whatsappEmp,
+                            "Hola, me comunico con ${empresa.nombre} a través de la app Códice..."
+                        )
+                    }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_whatsapp),
+                            contentDescription = "WhatsApp",
+                            tint = Color(0xFF128C7E),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "WhatsApp: $whatsappEmp",
+                            fontSize = 11.sp,
+                            color = Color(0xFF128C7E),
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

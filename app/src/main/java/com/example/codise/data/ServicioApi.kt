@@ -123,6 +123,11 @@ interface ServicioApi {
         @Query("usuario") idUsuario: Int? = null
     ): Response<List<Empresa>>
 
+    @GET("api/empresas/{id}/")
+    suspend fun obtenerDetalleEmpresa(
+        @Path("id") idEmpresa: Int
+    ): Response<Empresa>
+
     @POST("api/empresas/")
     suspend fun registrarEmpresa(
         @Header("Authorization") token: String,

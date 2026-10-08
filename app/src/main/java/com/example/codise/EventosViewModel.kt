@@ -72,10 +72,10 @@ class ViewModelEventos(aplicacion: Application) : AndroidViewModel(aplicacion) {
                 if (respuesta.isSuccessful) {
                     _estadoUi.value = EstadoUiEventos.Exito(respuesta.body() ?: emptyList())
                 } else {
-                    _estadoUi.value = EstadoUiEventos.Error("Error: ${respuesta.code()}")
+                    _estadoUi.value = EstadoUiEventos.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
                 }
             } catch (e: Exception) {
-                _estadoUi.value = EstadoUiEventos.Error("Error de red: ${e.message}")
+                _estadoUi.value = EstadoUiEventos.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
             }
         }
     }

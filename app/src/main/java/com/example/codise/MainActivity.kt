@@ -153,6 +153,7 @@ fun AplicacionAutenticada(
     var pantallaActual by remember { mutableStateOf("main") }
     var mostrarFormularioPerfil by remember { mutableStateOf(false) }
     var eventoSeleccionado by remember { mutableStateOf<Evento?>(null) }
+    var perfilPublicoSeleccionado by remember { mutableStateOf<PerfilPublicoParametros?>(null) }
     val ciudadSeleccionada = viewModelPrincipal.ciudadSeleccionada
     var pestanaSeleccionada by remember { mutableIntStateOf(0) }
 
@@ -367,9 +368,13 @@ fun AplicacionAutenticada(
 
     var mostrarDialogoIdioma by remember { mutableStateOf(false) }
 
-    // Interceptar botón atrás del sistema cuando se esté en el asistente
+    // Interceptar botón atrás del sistema cuando se esté en el asistente o perfil de autor
     BackHandler(enabled = pantallaActual == "assistant") {
         pantallaActual = "main"
+    }
+
+    BackHandler(enabled = pantallaActual == "author_profile") {
+        pantallaActual = "publications"
     }
 
     val cambiarIdiomaApp: (IdiomaApp) -> Unit = { nuevoIdioma ->
@@ -475,6 +480,7 @@ fun AplicacionAutenticada(
                             viewModelEventos.reiniciarEstadoSubida()
                         }
                         "assistant" -> pantallaActual = "main"
+                        "author_profile" -> pantallaActual = "publications"
                         else -> pantallaActual = "main"
                     }
                 }
@@ -604,6 +610,14 @@ fun AplicacionAutenticada(
                         viewModel = viewModelPublicaciones,
                         idEmpresaActiva = idEmpresaActiva,
                         alHacerClicEnSubir = { pantallaActual = "upload_publication" },
+                        alHacerClicEnAutor = { pub ->
+                            perfilPublicoSeleccionado = pub.aPerfilParametros()
+                            pantallaActual = "author_profile"
+                        },
+                        alHacerClicEnAutorComentario = { com ->
+                            perfilPublicoSeleccionado = com.aPerfilParametros()
+                            pantallaActual = "author_profile"
+                        },
                         paddingSuperior = paddingSuperior
                     )
                 }
@@ -672,6 +686,20 @@ fun AplicacionAutenticada(
                         puntosVisitados = puntosVisitados,
                         alAlternarVisitado = { puntoId -> solicitarUbicacionYMarcar(puntoId) }
                     )
+                }
+                "author_profile" -> {
+                    perfilPublicoSeleccionado?.let { parametros ->
+                        val idEmpresaActiva = (perfilActivo as? PerfilActivo.EmpresaActiva)?.empresa?.id
+                        PantallaDetalleUsuario(
+                            parametros = parametros,
+                            viewModelPublicaciones = viewModelPublicaciones,
+                            idEmpresaActiva = idEmpresaActiva,
+                            alRegresar = { pantallaActual = "publications" },
+                            paddingSuperior = paddingSuperior
+                        )
+                    } ?: run {
+                        pantallaActual = "publications"
+                    }
                 }
             }
         }
@@ -1156,13 +1184,52 @@ fun TarjetaPrincipal(
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = GoldColor)
                 } else if (error != null) {
                     Column(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text(text = error, color = MaterialTheme.colorScheme.error)
-                        Button(onClick = alRefrescar, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
-                            Text(cadenas.reintentar)
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = error,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    lineHeight = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = alRefrescar,
+                                    colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(text = cadenas.reintentar, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 } else {
@@ -1370,7 +1437,7 @@ fun BarraNavegacionInferior(
                             "assistant" -> cadenas.asistenteNuevaConversacion
                             else -> cadenas.publicaciones
                         },
-                        tint = if (pantallaActual in listOf("publications", "circuits_and_poi", "profile", "assistant")) GoldColor else GoldColor.copy(alpha = 0.5f),
+                        tint = if (pantallaActual in listOf("publications", "circuits_and_poi", "profile", "assistant", "author_profile")) GoldColor else GoldColor.copy(alpha = 0.5f),
                         modifier = Modifier.size(28.dp)
                     )
                 }

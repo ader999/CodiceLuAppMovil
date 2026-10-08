@@ -83,10 +83,10 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
                 if (respuesta.isSuccessful) {
                     _estadoUi.value = EstadoUiPublicaciones.Exito(respuesta.body() ?: emptyList())
                 } else {
-                    _estadoUi.value = EstadoUiPublicaciones.Error("Error: ${respuesta.code()}")
+                    _estadoUi.value = EstadoUiPublicaciones.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
                 }
             } catch (e: Exception) {
-                _estadoUi.value = EstadoUiPublicaciones.Error("Error de red: ${e.message}")
+                _estadoUi.value = EstadoUiPublicaciones.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
             }
         }
     }
@@ -192,10 +192,10 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
                     }
                     alTerminar(true, null)
                 } else {
-                    alTerminar(false, "Error al enviar comentario (${respuesta.code()})")
+                    alTerminar(false, com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
                 }
             } catch (e: Exception) {
-                alTerminar(false, "Error de red: ${e.localizedMessage}")
+                alTerminar(false, com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
             }
         }
     }
@@ -250,11 +250,10 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
                     _subidaExitosa.value = true
                     obtenerPublicaciones()
                 } else {
-                    val cuerpoError = try { respuesta.errorBody()?.string() } catch (e: Exception) { null }
-                    _mensajeError.value = parsearMensajeError(cuerpoError, respuesta.code(), respuesta.message())
+                    _mensajeError.value = com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta)
                 }
             } catch (e: Exception) {
-                _mensajeError.value = "Error de red o procesamiento: ${e.localizedMessage}"
+                _mensajeError.value = com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e)
             } finally {
                 _estaSubiendo.value = false
             }

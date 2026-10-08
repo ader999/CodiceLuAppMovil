@@ -55,8 +55,11 @@ fun PantallaPublicaciones(
     viewModel: ViewModelPublicaciones,
     idEmpresaActiva: Int? = null,
     alHacerClicEnSubir: () -> Unit = {},
+    alHacerClicEnAutor: (Publicacion) -> Unit = {},
+    alHacerClicEnAutorComentario: (ComentarioPublicacion) -> Unit = {},
     paddingSuperior: Dp = 0.dp
 ) {
+    val cadenas = LocalCadenas.current
     val estadoUi by viewModel.estadoUi
     var imagenesVistaPrevia by remember { mutableStateOf<List<String>?>(null) }
     var paginaInicialVistaPrevia by remember { mutableIntStateOf(0) }
@@ -75,12 +78,52 @@ fun PantallaPublicaciones(
                 }
                 is EstadoUiPublicaciones.Error -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center).padding(top = paddingSuperior),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(top = paddingSuperior)
+                            .padding(horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = (estadoUi as EstadoUiPublicaciones.Error).mensaje, color = Color.Red)
-                        Button(onClick = { viewModel.obtenerPublicaciones(idEmpresaContexto = idEmpresaActiva) }, colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo)) {
-                            Text("Reintentar")
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = (estadoUi as EstadoUiPublicaciones.Error).mensaje,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    lineHeight = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { viewModel.obtenerPublicaciones(idEmpresaContexto = idEmpresaActiva) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(cadenas.reintentar, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
@@ -104,7 +147,8 @@ fun PantallaPublicaciones(
                                     alHacerClicEnImagen = { imagenes, pagina ->
                                         imagenesVistaPrevia = imagenes
                                         paginaInicialVistaPrevia = pagina
-                                    }
+                                    },
+                                    alHacerClicEnAutor = alHacerClicEnAutor
                                 )
                             }
                         }
@@ -133,6 +177,7 @@ fun PantallaPublicaciones(
             publicacion = pubActual,
             viewModel = viewModel,
             idEmpresaActiva = idEmpresaActiva,
+            alHacerClicEnAutor = alHacerClicEnAutorComentario,
             alCerrar = { publicacionSeleccionadaParaComentarios = null }
         )
     }
@@ -172,7 +217,8 @@ fun TarjetaPublicacion(
     publicacion: Publicacion,
     alHacerClicEnLike: () -> Unit,
     alHacerClicEnComentar: () -> Unit,
-    alHacerClicEnImagen: (List<String>, Int) -> Unit
+    alHacerClicEnImagen: (List<String>, Int) -> Unit,
+    alHacerClicEnAutor: ((Publicacion) -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -183,7 +229,15 @@ fun TarjetaPublicacion(
         Column {
             // Encabezado
             Row(
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                    .then(
+                        if (alHacerClicEnAutor != null) {
+                            Modifier.clickable { alHacerClicEnAutor(publicacion) }
+                        } else Modifier
+                    )
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val fotoAMostrar = publicacion.fotoAutorAMostrar
@@ -384,6 +438,7 @@ fun HojaComentariosPublicacion(
     publicacion: Publicacion,
     viewModel: ViewModelPublicaciones,
     idEmpresaActiva: Int? = null,
+    alHacerClicEnAutor: ((ComentarioPublicacion) -> Unit)? = null,
     alCerrar: () -> Unit
 ) {
     val cadenas = LocalCadenas.current
@@ -487,7 +542,13 @@ fun HojaComentariosPublicacion(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     items(publicacion.comentarios, key = { it.id }) { comentario ->
-                        ElementoComentario(comentario = comentario)
+                        ElementoComentario(
+                            comentario = comentario,
+                            alHacerClicEnAutor = { com ->
+                                alCerrar()
+                                alHacerClicEnAutor?.invoke(com)
+                            }
+                        )
                     }
                 }
             }
@@ -619,7 +680,12 @@ fun HojaComentariosPublicacion(
 }
 
 @Composable
-fun ElementoComentario(comentario: ComentarioPublicacion) {
+fun ElementoComentario(
+    comentario: ComentarioPublicacion,
+    alHacerClicEnAutor: ((ComentarioPublicacion) -> Unit)? = null
+) {
+    val modifierClic = if (alHacerClicEnAutor != null) Modifier.clickable { alHacerClicEnAutor(comentario) } else Modifier
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -633,6 +699,7 @@ fun ElementoComentario(comentario: ComentarioPublicacion) {
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
+                    .then(modifierClic)
                     .background(GrisClaro.copy(alpha = 0.2f)),
                 contentScale = ContentScale.Crop,
                 error = androidx.compose.ui.graphics.painter.ColorPainter(AzulPetroleo.copy(alpha = 0.2f))
@@ -642,6 +709,7 @@ fun ElementoComentario(comentario: ComentarioPublicacion) {
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
+                    .then(modifierClic)
                     .background(AzulPetroleo.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -656,7 +724,10 @@ fun ElementoComentario(comentario: ComentarioPublicacion) {
             Icon(
                 Icons.Default.AccountCircle,
                 null,
-                modifier = Modifier.size(34.dp),
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .then(modifierClic),
                 tint = AzulPetroleo.copy(alpha = 0.5f)
             )
         }
@@ -672,7 +743,10 @@ fun ElementoComentario(comentario: ComentarioPublicacion) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = modifierClic
+                ) {
                     Text(
                         text = comentario.nombreAutorAMostrar,
                         fontWeight = FontWeight.Bold,

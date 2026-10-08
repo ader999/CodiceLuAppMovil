@@ -144,23 +144,24 @@ class ViewModelAsistente(aplicacion: Application) : AndroidViewModel(aplicacion)
                     )
                     _mensajes.value = _mensajes.value + mensajeAsistente
                 } else {
-                    val errorMensaje = respuesta.errorBody()?.string()
+                    val errorLimpio = com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta)
                     val mensajeError = MensajeChat(
                         emisor = EmisorMensaje.ASISTENTE,
-                        texto = mensajeErrorPorDefecto,
+                        texto = errorLimpio.ifBlank { mensajeErrorPorDefecto },
                         esError = true
                     )
                     _mensajes.value = _mensajes.value + mensajeError
-                    _error.value = "Error ${respuesta.code()}: $errorMensaje"
+                    _error.value = errorLimpio
                 }
             } catch (e: Exception) {
+                val errorLimpio = com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e)
                 val mensajeError = MensajeChat(
                     emisor = EmisorMensaje.ASISTENTE,
-                    texto = mensajeErrorPorDefecto,
+                    texto = errorLimpio.ifBlank { mensajeErrorPorDefecto },
                     esError = true
                 )
                 _mensajes.value = _mensajes.value + mensajeError
-                _error.value = e.localizedMessage
+                _error.value = errorLimpio
             } finally {
                 _estaEscribiendo.value = false
             }

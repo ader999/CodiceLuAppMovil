@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -119,69 +120,144 @@ fun PantallaLogin(
                 var telefono by remember { mutableStateOf("") }
                 var esProtagonista by remember { mutableStateOf(false) }
                 var esTurista by remember { mutableStateOf(false) }
+                var mostrarContrasena by remember { mutableStateOf(false) }
+
+                var errorUsuario by remember { mutableStateOf<String?>(null) }
+                var errorCorreo by remember { mutableStateOf<String?>(null) }
+                var errorContrasena by remember { mutableStateOf<String?>(null) }
+                var errorNombre by remember { mutableStateOf<String?>(null) }
+                var errorApellido by remember { mutableStateOf<String?>(null) }
+                var errorTelefono by remember { mutableStateOf<String?>(null) }
+                var errorRol by remember { mutableStateOf<String?>(null) }
+
+                fun limpiarErroresLocales() {
+                    errorUsuario = null
+                    errorCorreo = null
+                    errorContrasena = null
+                    errorNombre = null
+                    errorApellido = null
+                    errorTelefono = null
+                    errorRol = null
+                    viewModel.limpiarError()
+                }
 
                 if (modoRegistro) {
                     OutlinedTextField(
                         value = nombre,
-                        onValueChange = { nombre = it },
+                        onValueChange = {
+                            nombre = it
+                            errorNombre = null
+                            viewModel.limpiarError()
+                        },
                         label = { Text(cadenas.nombre) },
+                        isError = errorNombre != null,
+                        supportingText = errorNombre?.let { msg -> { Text(text = msg) } },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = coloresCamposTexto()
+                        colors = coloresCamposTexto(),
+                        singleLine = true
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = apellido,
-                        onValueChange = { apellido = it },
+                        onValueChange = {
+                            apellido = it
+                            errorApellido = null
+                            viewModel.limpiarError()
+                        },
                         label = { Text(cadenas.apellido) },
+                        isError = errorApellido != null,
+                        supportingText = errorApellido?.let { msg -> { Text(text = msg) } },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = coloresCamposTexto()
+                        colors = coloresCamposTexto(),
+                        singleLine = true
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = usuario,
-                        onValueChange = { usuario = it },
+                        onValueChange = {
+                            usuario = it
+                            errorUsuario = null
+                            viewModel.limpiarError()
+                        },
                         label = { Text(cadenas.nombreUsuario) },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = AzulPetroleo) },
+                        isError = errorUsuario != null,
+                        supportingText = errorUsuario?.let { msg -> { Text(text = msg) } },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = coloresCamposTexto()
+                        colors = coloresCamposTexto(),
+                        singleLine = true
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = telefono,
-                        onValueChange = { telefono = it },
+                        onValueChange = {
+                            telefono = it
+                            errorTelefono = null
+                            viewModel.limpiarError()
+                        },
                         label = { Text(cadenas.telefono) },
                         leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = AzulPetroleo) },
+                        isError = errorTelefono != null,
+                        supportingText = errorTelefono?.let { msg -> { Text(text = msg) } },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = coloresCamposTexto()
+                        colors = coloresCamposTexto(),
+                        singleLine = true
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 OutlinedTextField(
                     value = correo,
-                    onValueChange = { correo = it },
-                    label = { Text(cadenas.correoElectronico) },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = AzulPetroleo) },
+                    onValueChange = {
+                        correo = it
+                        errorCorreo = null
+                        viewModel.limpiarError()
+                    },
+                    label = { Text(if (modoRegistro) cadenas.correoElectronico else cadenas.correoOusuario) },
+                    leadingIcon = {
+                        Icon(
+                            if (modoRegistro) Icons.Default.Email else Icons.Default.Person,
+                            contentDescription = null,
+                            tint = AzulPetroleo
+                        )
+                    },
+                    isError = errorCorreo != null,
+                    supportingText = errorCorreo?.let { msg -> { Text(text = msg) } },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = coloresCamposTexto()
+                    colors = coloresCamposTexto(),
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = contrasena,
-                    onValueChange = { contrasena = it },
+                    onValueChange = {
+                        contrasena = it
+                        errorContrasena = null
+                        viewModel.limpiarError()
+                    },
                     label = { Text(cadenas.contrasena) },
                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = AzulPetroleo) },
-                    visualTransformation = PasswordVisualTransformation(),
+                    trailingIcon = {
+                        val icono = if (mostrarContrasena) Icons.Default.VisibilityOff else Icons.Default.Visibility
+                        val desc = if (mostrarContrasena) "Ocultar contraseña" else "Mostrar contraseña"
+                        IconButton(onClick = { mostrarContrasena = !mostrarContrasena }) {
+                            Icon(imageVector = icono, contentDescription = desc, tint = AzulPetroleo)
+                        }
+                    },
+                    visualTransformation = if (mostrarContrasena) VisualTransformation.None else PasswordVisualTransformation(),
+                    isError = errorContrasena != null,
+                    supportingText = errorContrasena?.let { msg -> { Text(text = msg) } },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = coloresCamposTexto()
+                    colors = coloresCamposTexto(),
+                    singleLine = true
                 )
 
                 if (modoRegistro) {
@@ -190,19 +266,44 @@ fun PantallaLogin(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Checkbox(checked = esProtagonista, onCheckedChange = { esProtagonista = it })
+                        Checkbox(
+                            checked = esProtagonista,
+                            onCheckedChange = {
+                                esProtagonista = it
+                                errorRol = null
+                                viewModel.limpiarError()
+                            }
+                        )
                         Text(cadenas.soyProtagonista, color = AzulPetroleo)
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Checkbox(checked = esTurista, onCheckedChange = { esTurista = it })
+                        Checkbox(
+                            checked = esTurista,
+                            onCheckedChange = {
+                                esTurista = it
+                                errorRol = null
+                                viewModel.limpiarError()
+                            }
+                        )
                         Text(cadenas.soyTurista, color = AzulPetroleo)
+                    }
+
+                    if (errorRol != null) {
+                        Text(
+                            text = errorRol!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 12.dp, top = 4.dp)
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
                 if (estadoUi is EstadoUiLogin.Cargando) {
                     CircularProgressIndicator(color = AzulPetroleo)
@@ -210,21 +311,76 @@ fun PantallaLogin(
                     Button(
                         onClick = {
                             if (modoRegistro) {
-                                viewModel.registrar(
-                                    Usuario(
-                                        nombreUsuario = usuario,
-                                        correoElectronico = correo,
-                                        nombre = nombre,
-                                        apellido = apellido,
-                                        esProtagonista = esProtagonista,
-                                        esTurista = esTurista,
-                                        telefono = telefono,
-                                        contrasena = contrasena,
-                                        confirmarContrasena = contrasena
+                                var hayErrores = false
+                                if (nombre.isBlank()) {
+                                    errorNombre = cadenas.errorCampoRequerido
+                                    hayErrores = true
+                                }
+                                if (apellido.isBlank()) {
+                                    errorApellido = cadenas.errorCampoRequerido
+                                    hayErrores = true
+                                }
+                                if (usuario.isBlank()) {
+                                    errorUsuario = cadenas.errorCampoRequerido
+                                    hayErrores = true
+                                } else if (usuario.trim().length < 3) {
+                                    errorUsuario = "Mínimo 3 caracteres"
+                                    hayErrores = true
+                                } else if (usuario.contains(" ")) {
+                                    errorUsuario = "No debe contener espacios"
+                                    hayErrores = true
+                                }
+                                if (correo.isBlank()) {
+                                    errorCorreo = cadenas.errorCampoRequerido
+                                    hayErrores = true
+                                } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches()) {
+                                    errorCorreo = cadenas.errorCorreoInvalido
+                                    hayErrores = true
+                                }
+                                if (telefono.isBlank()) {
+                                    errorTelefono = cadenas.errorCampoRequerido
+                                    hayErrores = true
+                                }
+                                if (contrasena.isBlank()) {
+                                    errorContrasena = cadenas.errorCampoRequerido
+                                    hayErrores = true
+                                } else if (contrasena.length < 6) {
+                                    errorContrasena = cadenas.errorContrasenaCorta
+                                    hayErrores = true
+                                }
+                                if (!esProtagonista && !esTurista) {
+                                    errorRol = cadenas.errorSeleccionarRol
+                                    hayErrores = true
+                                }
+
+                                if (!hayErrores) {
+                                    viewModel.registrar(
+                                        Usuario(
+                                            nombreUsuario = usuario.trim(),
+                                            correoElectronico = correo.trim(),
+                                            nombre = nombre.trim(),
+                                            apellido = apellido.trim(),
+                                            esProtagonista = esProtagonista,
+                                            esTurista = esTurista,
+                                            telefono = telefono.trim(),
+                                            contrasena = contrasena,
+                                            confirmarContrasena = contrasena
+                                        )
                                     )
-                                )
+                                }
                             } else {
-                                viewModel.iniciarSesion(correo, contrasena)
+                                var hayErrores = false
+                                if (correo.isBlank()) {
+                                    errorCorreo = cadenas.errorCampoRequerido
+                                    hayErrores = true
+                                }
+                                if (contrasena.isBlank()) {
+                                    errorContrasena = cadenas.errorCampoRequerido
+                                    hayErrores = true
+                                }
+                                if (!hayErrores) {
+                                    viewModel.iniciarSesion(correo.trim(), contrasena)
+                                }
                             }
                         },
                         modifier = Modifier
@@ -243,11 +399,35 @@ fun PantallaLogin(
                 }
 
                 if (estadoUi is EstadoUiLogin.Error) {
-                    Text(
-                        text = (estadoUi as EstadoUiLogin.Error).mensaje,
-                        color = androidx.compose.ui.graphics.Color.Red,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    val mensajeError = (estadoUi as EstadoUiLogin.Error).mensaje
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = mensajeError,
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 18.sp
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -274,7 +454,10 @@ fun PantallaLogin(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedButton(
-                    onClick = { viewModel.iniciarSesionConGoogle(contexto) },
+                    onClick = {
+                        limpiarErroresLocales()
+                        viewModel.iniciarSesionConGoogle(contexto)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -304,7 +487,10 @@ fun PantallaLogin(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                TextButton(onClick = { modoRegistro = !modoRegistro }) {
+                TextButton(onClick = {
+                    modoRegistro = !modoRegistro
+                    limpiarErroresLocales()
+                }) {
                     Text(
                         text = if (modoRegistro) cadenas.yaTienesCuenta else cadenas.noTienesCuenta,
                         color = AzulPetroleo
@@ -323,7 +509,12 @@ fun coloresCamposTexto() = OutlinedTextFieldDefaults.colors(
     unfocusedBorderColor = GrisClaro,
     focusedLabelColor = AzulPetroleo,
     unfocusedLabelColor = GrisClaro,
-    cursorColor = AzulPetroleo
+    cursorColor = AzulPetroleo,
+    errorBorderColor = MaterialTheme.colorScheme.error,
+    errorLabelColor = MaterialTheme.colorScheme.error,
+    errorLeadingIconColor = MaterialTheme.colorScheme.error,
+    errorTrailingIconColor = MaterialTheme.colorScheme.error,
+    errorSupportingTextColor = MaterialTheme.colorScheme.error
 )
 
 @Preview(showBackground = true)
