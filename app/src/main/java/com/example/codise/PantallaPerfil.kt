@@ -63,6 +63,7 @@ fun ContenidoPerfil(
     alSeleccionarPerfil: (PerfilActivo) -> Unit = {},
     idiomaActual: IdiomaApp = IdiomaApp.ESPANOL,
     alCambiarIdioma: () -> Unit = {},
+    alAbrirSimuladorResiliencia: () -> Unit = {},
     paddingSuperior: Dp = 0.dp
 ) {
     val cadenas = LocalCadenas.current
@@ -551,6 +552,32 @@ fun ContenidoPerfil(
                     fontWeight = FontWeight.SemiBold
                 )
             }
+
+            OutlinedButton(
+                onClick = alAbrirSimuladorResiliencia,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AzulPetroleo),
+                border = androidx.compose.foundation.BorderStroke(1.2.dp, GoldColor),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Build,
+                    contentDescription = null,
+                    tint = GoldColor,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = cadenas.simuladorResiliencia,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AzulPetroleo
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             OutlinedButton(
                 onClick = alCerrarSesion,

@@ -18,6 +18,24 @@ object ManejadorErrores {
         REGISTRO
     }
 
+    enum class CategoriaError {
+        NO_ENCONTRADO,      // 404
+        SERVIDOR,           // 50X (500, 502, 503, 504)
+        RED,                // Sin conexión / timeout
+        SESION_EXPIRADA,    // 401, 403
+        SOLICITUD_INVALIDA, // 400
+        GENERAL             // Desconocido / otro
+    }
+
+    data class DetallesErrorVisual(
+        val categoria: CategoriaError,
+        val titulo: String,
+        val mensaje: String,
+        val sugerencia: String,
+        val textoBotonPrincipal: String,
+        val textoBotonSecundario: String
+    )
+
     @Volatile
     var idiomaActual: IdiomaApp = IdiomaApp.ESPANOL
 
@@ -130,34 +148,101 @@ object ManejadorErrores {
                 }
             }
             404 -> {
-                when (idioma) {
-                    IdiomaApp.INGLES -> "The requested resource was not found."
-                    IdiomaApp.CHINO -> "未找到所请求的资源。"
-                    else -> "El recurso solicitado no fue encontrado o no está disponible."
-                }
+                cadenas.error404Mensaje
             }
             408, 504 -> {
-                when (idioma) {
-                    IdiomaApp.INGLES -> "Connection timed out. Please try again."
-                    IdiomaApp.CHINO -> "连接超时。请稍后重试。"
-                    else -> "El tiempo de espera se ha agotado. Por favor, intenta de nuevo."
-                }
+                cadenas.errorRedMensaje
             }
-            500, 502, 503 -> {
-                cadenas.errorServidor
+            in 500..599 -> {
+                cadenas.error50xMensaje
             }
             else -> {
                 val extraido = extraerMensajeDeJson(cuerpoError)
-                if (extraido != null) {
+                if (extraido != null && !esMensajeTecnico(extraido)) {
                     extraido
                 } else {
-                    when (idioma) {
-                        IdiomaApp.INGLES -> "Server error ($codigo). Please try again later."
-                        IdiomaApp.CHINO -> "服务器出现问题 ($codigo)。请稍后再试。"
-                        else -> "Ocurrió un problema en el servidor (Código $codigo). Intenta más tarde."
-                    }
+                    cadenas.errorGeneralMensaje
                 }
             }
+        }
+    }
+
+    fun determinarCategoria(codigoHttp: Int?): CategoriaError {
+        if (codigoHttp == null) return CategoriaError.GENERAL
+        return when (codigoHttp) {
+            404 -> CategoriaError.NO_ENCONTRADO
+            in 500..599 -> CategoriaError.SERVIDOR
+            408, 504 -> CategoriaError.RED
+            401, 403 -> CategoriaError.SESION_EXPIRADA
+            400 -> CategoriaError.SOLICITUD_INVALIDA
+            else -> CategoriaError.GENERAL
+        }
+    }
+
+    fun determinarCategoria(e: Throwable?): CategoriaError {
+        if (e == null) return CategoriaError.GENERAL
+        return if (esErrorDeRed(e)) CategoriaError.RED else CategoriaError.GENERAL
+    }
+
+    fun determinarCategoriaPorMensaje(mensaje: String?): CategoriaError {
+        if (mensaje.isNullOrBlank()) return CategoriaError.GENERAL
+        val lower = mensaje.lowercase()
+        return when {
+            lower.contains("encontrado") || lower.contains("found") || lower.contains("404") || lower.contains("recurso") -> CategoriaError.NO_ENCONTRADO
+            lower.contains("mantenimiento") || lower.contains("servidor") || lower.contains("server") || lower.contains("50") -> CategoriaError.SERVIDOR
+            lower.contains("conexión") || lower.contains("conexion") || lower.contains("red") || lower.contains("internet") || lower.contains("timeout") || lower.contains("tiempo de espera") || lower.contains("host") -> CategoriaError.RED
+            lower.contains("sesión") || lower.contains("sesion") || lower.contains("autorizado") || lower.contains("credencial") -> CategoriaError.SESION_EXPIRADA
+            else -> CategoriaError.GENERAL
+        }
+    }
+
+    fun resolverDetallesVisuales(
+        categoria: CategoriaError,
+        mensajePersonalizado: String? = null,
+        idioma: IdiomaApp = idiomaActual
+    ): DetallesErrorVisual {
+        val cadenas = CadenasIdiomas.obtener(idioma)
+        return when (categoria) {
+            CategoriaError.NO_ENCONTRADO -> DetallesErrorVisual(
+                categoria = categoria,
+                titulo = cadenas.error404Titulo,
+                mensaje = mensajePersonalizado ?: cadenas.error404Mensaje,
+                sugerencia = cadenas.error404Sugerencia,
+                textoBotonPrincipal = cadenas.volverAlInicio,
+                textoBotonSecundario = cadenas.irAExplorar
+            )
+            CategoriaError.SERVIDOR -> DetallesErrorVisual(
+                categoria = categoria,
+                titulo = cadenas.error50xTitulo,
+                mensaje = mensajePersonalizado ?: cadenas.error50xMensaje,
+                sugerencia = cadenas.error50xSugerencia,
+                textoBotonPrincipal = cadenas.reintentar,
+                textoBotonSecundario = cadenas.volverAlInicio
+            )
+            CategoriaError.RED -> DetallesErrorVisual(
+                categoria = categoria,
+                titulo = cadenas.errorRedTitulo,
+                mensaje = mensajePersonalizado ?: cadenas.errorRedMensaje,
+                sugerencia = cadenas.errorRedSugerencia,
+                textoBotonPrincipal = cadenas.reintentar,
+                textoBotonSecundario = cadenas.volverAlInicio
+            )
+            CategoriaError.SESION_EXPIRADA -> DetallesErrorVisual(
+                categoria = categoria,
+                titulo = cadenas.iniciarSesion,
+                mensaje = mensajePersonalizado ?: cadenas.errorCredenciales,
+                sugerencia = cadenas.errorGeneralSugerencia,
+                textoBotonPrincipal = cadenas.iniciarSesion,
+                textoBotonSecundario = cadenas.volverAlInicio
+            )
+            CategoriaError.SOLICITUD_INVALIDA, CategoriaError.GENERAL -> DetallesErrorVisual(
+                categoria = categoria,
+                titulo = cadenas.errorGeneralTitulo,
+                mensaje = mensajePersonalizado ?: cadenas.errorGeneralMensaje,
+                sugerencia = cadenas.errorGeneralSugerencia,
+                textoBotonPrincipal = cadenas.reintentar,
+                textoBotonSecundario = cadenas.volverAlInicio
+            )
         }
     }
 

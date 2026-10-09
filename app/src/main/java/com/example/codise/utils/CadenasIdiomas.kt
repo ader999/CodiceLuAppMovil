@@ -134,7 +134,26 @@ data class TextosApp(
     val errorConexionRed: String,
     val errorCredenciales: String,
     val errorServidor: String,
-    val errorDatos: String
+    val errorDatos: String,
+    // Pantallas de error amigables y resiliencia
+    val error404Titulo: String,
+    val error404Mensaje: String,
+    val error404Sugerencia: String,
+    val error50xTitulo: String,
+    val error50xMensaje: String,
+    val error50xSugerencia: String,
+    val errorRedTitulo: String,
+    val errorRedMensaje: String,
+    val errorRedSugerencia: String,
+    val errorGeneralTitulo: String,
+    val errorGeneralMensaje: String,
+    val errorGeneralSugerencia: String,
+    val volverAlInicio: String,
+    val irAExplorar: String,
+    val simuladorResiliencia: String,
+    val soporteAutomatico: String,
+    val reintentandoConexion: String,
+    val conexionRestablecida: String
 )
 
 val CadenasEspanol = TextosApp(
@@ -260,7 +279,25 @@ val CadenasEspanol = TextosApp(
     errorConexionRed = "No se pudo conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.",
     errorCredenciales = "Usuario o contraseña incorrectos. Verifica tus datos.",
     errorServidor = "El servidor no está disponible en este momento. Intenta de nuevo más tarde.",
-    errorDatos = "Error al procesar la información. Intenta nuevamente."
+    errorDatos = "Error al procesar la información. Intenta nuevamente.",
+    error404Titulo = "Destino o contenido no encontrado",
+    error404Mensaje = "No pudimos encontrar el destino o elemento solicitado. Es posible que haya sido actualizado o reubicado.",
+    error404Sugerencia = "Puedes regresar a la pantalla principal o explorar otros destinos en el mapa interactivo.",
+    error50xTitulo = "Servicio en mantenimiento temporal",
+    error50xMensaje = "Estamos realizando ajustes para mejorar la experiencia turística en Codice路. Tu información y visitas están a salvo.",
+    error50xSugerencia = "La plataforma se restablece automáticamente. Pulsa reintentar en unos segundos.",
+    errorRedTitulo = "Sin conexión a internet",
+    errorRedMensaje = "No se detecta acceso a la red móvil o Wi-Fi en este momento.",
+    errorRedSugerencia = "Comprueba tu señal y pulsa el botón para reintentar la conexión de inmediato.",
+    errorGeneralTitulo = "Algo no salió como esperábamos",
+    errorGeneralMensaje = "Ocurrió una interrupción temporal al sincronizar la información.",
+    errorGeneralSugerencia = "Puedes reintentar la operación o volver de manera segura al inicio.",
+    volverAlInicio = "Volver al Inicio",
+    irAExplorar = "Explorar Ciudades",
+    simuladorResiliencia = "Demostración Flujo Resiliente (404/50X)",
+    soporteAutomatico = "Auto-Recuperación Inteligente",
+    reintentandoConexion = "Reintentando conexión automáticamente...",
+    conexionRestablecida = "¡Conexión restablecida con éxito!"
 )
 
 val CadenasIngles = TextosApp(
@@ -386,7 +423,25 @@ val CadenasIngles = TextosApp(
     errorConexionRed = "Could not connect to server. Please check your internet connection.",
     errorCredenciales = "Incorrect username or password. Please verify your credentials.",
     errorServidor = "The server is currently unavailable. Please try again later.",
-    errorDatos = "Error processing server response. Please try again later."
+    errorDatos = "Error processing server response. Please try again later.",
+    error404Titulo = "Destination or content not found",
+    error404Mensaje = "We couldn't find the requested resource. It may have been updated or relocated.",
+    error404Sugerencia = "You can return to the home screen or explore other destinations on the map.",
+    error50xTitulo = "Service under temporary maintenance",
+    error50xMensaje = "We are making quick updates to provide a smoother travel experience. Your data and visits are safe.",
+    error50xSugerencia = "The service recovers automatically. Tap retry in a few moments.",
+    errorRedTitulo = "No internet connection",
+    errorRedMensaje = "No mobile data or Wi-Fi access detected at the moment.",
+    errorRedSugerencia = "Check your signal and tap the button to retry immediately.",
+    errorGeneralTitulo = "Something didn't go as expected",
+    errorGeneralMensaje = "A temporary interruption occurred while syncing information.",
+    errorGeneralSugerencia = "You can retry or safely return to the home screen.",
+    volverAlInicio = "Back to Home",
+    irAExplorar = "Explore Cities",
+    simuladorResiliencia = "Resilience Demo (404/50X)",
+    soporteAutomatico = "Smart Self-Healing",
+    reintentandoConexion = "Retrying connection automatically...",
+    conexionRestablecida = "Connection successfully restored!"
 )
 
 val CadenasChino = TextosApp(
@@ -512,7 +567,25 @@ val CadenasChino = TextosApp(
     errorConexionRed = "无法连接到服务器。请检查您的网络连接并重试。",
     errorCredenciales = "用户名或密码不正确。请核对您的信息。",
     errorServidor = "服务器当前不可用。请稍后重试。",
-    errorDatos = "处理数据时出错。请稍后重试。"
+    errorDatos = "处理数据时出错。请稍后重试。",
+    error404Titulo = "未找到目的地或内容",
+    error404Mensaje = "无法找到您请求的资源。该内容可能已更新或迁移。",
+    error404Sugerencia = "您可以返回首页或在互动地图中探索其他目的地。",
+    error50xTitulo = "服务正在维护中",
+    error50xMensaje = "我们正在优化系统以提供更好的文旅体验。您的数据安全无虞。",
+    error50xSugerencia = "系统将自动恢复，请在几秒后点击重试。",
+    errorRedTitulo = "网络连接已断开",
+    errorRedMensaje = "当前未检测到移动数据或Wi-Fi连接。",
+    errorRedSugerencia = "请检查网络信号并点击重试按钮。",
+    errorGeneralTitulo = "遇到了临时问题",
+    errorGeneralMensaje = "同步信息时发生了临时中断。",
+    errorGeneralSugerencia = "您可以重试此操作或安全返回主页。",
+    volverAlInicio = "返回首页",
+    irAExplorar = "探索城市",
+    simuladorResiliencia = "容错韧性演示 (404/50X)",
+    soporteAutomatico = "智能自愈系统",
+    reintentandoConexion = "正在自动重试连接...",
+    conexionRestablecida = "连接已成功恢复！"
 )
 
 object CadenasIdiomas {

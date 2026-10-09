@@ -158,6 +158,8 @@ fun AplicacionAutenticada(
     var pestanaSeleccionada by remember { mutableIntStateOf(0) }
 
     var idPuntoParaMarcarComoVisitado by remember { mutableStateOf<Int?>(null) }
+    var mostrarDialogoSimuladorErrores by remember { mutableStateOf(false) }
+    var categoriaErrorDemostracion by remember { mutableStateOf<com.example.codise.utils.ManejadorErrores.CategoriaError?>(null) }
 
     val lanzadorPermisosUbicacion = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -377,6 +379,11 @@ fun AplicacionAutenticada(
         pantallaActual = "publications"
     }
 
+    BackHandler(enabled = pantallaActual == "demo_error") {
+        pantallaActual = "main"
+        categoriaErrorDemostracion = null
+    }
+
     val cambiarIdiomaApp: (IdiomaApp) -> Unit = { nuevoIdioma ->
         gestorIdioma.cambiarIdioma(nuevoIdioma)
         ServicioApi.limpiarCache()
@@ -392,6 +399,17 @@ fun AplicacionAutenticada(
             idiomaActual = idiomaActual,
             alSeleccionarIdioma = cambiarIdiomaApp,
             alCerrar = { mostrarDialogoIdioma = false }
+        )
+    }
+
+    if (mostrarDialogoSimuladorErrores) {
+        DialogoDemostracionErrores(
+            alCerrar = { mostrarDialogoSimuladorErrores = false },
+            alSeleccionarVista = { cat ->
+                categoriaErrorDemostracion = cat
+                pantallaActual = "demo_error"
+                mostrarDialogoSimuladorErrores = false
+            }
         )
     }
 
@@ -419,7 +437,8 @@ fun AplicacionAutenticada(
                     pantallaActual = "assistant"
                     mostrarFormularioPerfil = false
                 },
-                alHacerClicEnIdioma = { mostrarDialogoIdioma = true }
+                alHacerClicEnIdioma = { mostrarDialogoIdioma = true },
+                alHacerClicEnSimulador = { mostrarDialogoSimuladorErrores = true }
             )
         },
         bottomBar = {
@@ -481,6 +500,10 @@ fun AplicacionAutenticada(
                         }
                         "assistant" -> pantallaActual = "main"
                         "author_profile" -> pantallaActual = "publications"
+                        "demo_error" -> {
+                            pantallaActual = "main"
+                            categoriaErrorDemostracion = null
+                        }
                         else -> pantallaActual = "main"
                     }
                 }
@@ -545,6 +568,7 @@ fun AplicacionAutenticada(
                         alSeleccionarPerfil = { viewModelPerfil.cambiarPerfilActivo(it) },
                         idiomaActual = idiomaActual,
                         alCambiarIdioma = { mostrarDialogoIdioma = true },
+                        alAbrirSimuladorResiliencia = { mostrarDialogoSimuladorErrores = true },
                         paddingSuperior = paddingSuperior
                     )
                 }
@@ -559,7 +583,12 @@ fun AplicacionAutenticada(
                             },
                             paddingSuperior = paddingSuperior
                         )
-                    }
+                    } ?: PantallaErrorAmigable(
+                        categoria = com.example.codise.utils.ManejadorErrores.CategoriaError.NO_ENCONTRADO,
+                        alVolverInicio = { pantallaActual = "main" },
+                        alExplorar = { pantallaActual = "main" },
+                        paddingSuperior = paddingSuperior
+                    )
                 }
                 "circuit_detail" -> {
                     val circuito = viewModelPrincipal.circuitoSeleccionado
@@ -572,7 +601,12 @@ fun AplicacionAutenticada(
                             paddingSuperior = paddingSuperior
                         )
                     } else {
-                        pantallaActual = "circuits_and_poi"
+                        PantallaErrorAmigable(
+                            categoria = com.example.codise.utils.ManejadorErrores.CategoriaError.NO_ENCONTRADO,
+                            alVolverInicio = { pantallaActual = "circuits_and_poi" },
+                            alExplorar = { pantallaActual = "main" },
+                            paddingSuperior = paddingSuperior
+                        )
                     }
                 }
                 "city_detail" -> {
@@ -582,7 +616,12 @@ fun AplicacionAutenticada(
                             alRegresar = { pantallaActual = "main" },
                             paddingSuperior = paddingSuperior
                         )
-                    }
+                    } ?: PantallaErrorAmigable(
+                        categoria = com.example.codise.utils.ManejadorErrores.CategoriaError.NO_ENCONTRADO,
+                        alVolverInicio = { pantallaActual = "main" },
+                        alExplorar = { pantallaActual = "main" },
+                        paddingSuperior = paddingSuperior
+                    )
                 }
                 "events" -> {
                     PantallaEventos(
@@ -604,7 +643,31 @@ fun AplicacionAutenticada(
                             viewModelEventos = viewModelEventos,
                             paddingSuperior = paddingSuperior
                         )
-                    }
+                    } ?: PantallaErrorAmigable(
+                        categoria = com.example.codise.utils.ManejadorErrores.CategoriaError.NO_ENCONTRADO,
+                        alVolverInicio = { pantallaActual = "events" },
+                        alExplorar = { pantallaActual = "main" },
+                        paddingSuperior = paddingSuperior
+                    )
+                }
+                "demo_error" -> {
+                    PantallaErrorAmigable(
+                        categoria = categoriaErrorDemostracion ?: com.example.codise.utils.ManejadorErrores.CategoriaError.SERVIDOR,
+                        alReintentar = {
+                            pantallaActual = "main"
+                            categoriaErrorDemostracion = null
+                            viewModelPrincipal.obtenerCiudades(forzar = true)
+                        },
+                        alVolverInicio = {
+                            pantallaActual = "main"
+                            categoriaErrorDemostracion = null
+                        },
+                        alExplorar = {
+                            pantallaActual = "main"
+                            categoriaErrorDemostracion = null
+                        },
+                        paddingSuperior = paddingSuperior
+                    )
                 }
                 "publications" -> {
                     val idCiudadSeleccionada = viewModelPrincipal.ciudadSeleccionada?.id
@@ -726,25 +789,35 @@ fun PantallaPrincipal(
     val estaCargando by viewModelPrincipal.estaCargando
     val error by viewModelPrincipal.error
 
-    PullToRefreshBox(
-        isRefreshing = estaCargando,
-        onRefresh = { viewModelPrincipal.obtenerCiudades(forzar = true) },
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 20.dp, end = 20.dp, top = paddingSuperior + 8.dp, bottom = 76.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    if (ciudades.isEmpty() && error != null && !estaCargando) {
+        PantallaErrorAmigable(
+            categoria = com.example.codise.utils.ManejadorErrores.determinarCategoriaPorMensaje(error),
+            mensajePersonalizado = error,
+            alReintentar = { viewModelPrincipal.obtenerCiudades(forzar = true) },
+            alVolverInicio = { viewModelPrincipal.obtenerCiudades(forzar = true) },
+            paddingSuperior = paddingSuperior
+        )
+    } else {
+        PullToRefreshBox(
+            isRefreshing = estaCargando,
+            onRefresh = { viewModelPrincipal.obtenerCiudades(forzar = true) },
+            modifier = Modifier.fillMaxSize()
         ) {
-            TarjetaPrincipal(
-                ciudades = ciudades,
-                estaCargando = estaCargando,
-                error = error,
-                alRefrescar = { viewModelPrincipal.obtenerCiudades(forzar = true) },
-                alHacerClicEnPin = alHacerClicEnPinCiudad,
-                alHacerClicEnCiudad = alHacerClicEnCiudad
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 20.dp, end = 20.dp, top = paddingSuperior + 8.dp, bottom = 76.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                TarjetaPrincipal(
+                    ciudades = ciudades,
+                    estaCargando = estaCargando,
+                    error = error,
+                    alRefrescar = { viewModelPrincipal.obtenerCiudades(forzar = true) },
+                    alHacerClicEnPin = alHacerClicEnPinCiudad,
+                    alHacerClicEnCiudad = alHacerClicEnCiudad
+                )
+            }
         }
     }
 }
@@ -759,7 +832,8 @@ fun BarraSuperior(
     alHacerClicEnPerfil: () -> Unit,
     alHacerClicEnLogo: () -> Unit,
     alHacerClicEnAsistente: () -> Unit = {},
-    alHacerClicEnIdioma: () -> Unit = {}
+    alHacerClicEnIdioma: () -> Unit = {},
+    alHacerClicEnSimulador: () -> Unit = {}
 ) {
     val cadenas = LocalCadenas.current
     var mostrarMenuPerfil by remember { mutableStateOf(false) }
@@ -860,11 +934,7 @@ fun BarraSuperior(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .clickable {
-                            if (empresasUsuario.isNotEmpty() || perfilActivo is PerfilActivo.EmpresaActiva) {
-                                mostrarMenuPerfil = true
-                            } else {
-                                alHacerClicEnPerfil()
-                            }
+                            mostrarMenuPerfil = true
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -1138,6 +1208,54 @@ fun BarraSuperior(
                             trailingIconColor = GoldColor
                         )
                     )
+
+                    DropdownMenuItem(
+                        modifier = Modifier
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        text = {
+                            Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                                Text(
+                                    text = cadenas.simuladorResiliencia,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = GoldColor
+                                )
+                                Text(
+                                    text = "Simular fallas 404, 50X y auto-recuperación",
+                                    fontSize = 10.sp,
+                                    color = BlancoBase.copy(alpha = 0.7f)
+                                )
+                            }
+                        },
+                        onClick = {
+                            mostrarMenuPerfil = false
+                            alHacerClicEnSimulador()
+                        },
+                        leadingIcon = {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(GoldColor.copy(alpha = 0.18f))
+                                    .border(1.2.dp, GoldColor.copy(alpha = 0.6f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Build,
+                                    contentDescription = null,
+                                    tint = GoldColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        colors = MenuDefaults.itemColors(
+                            textColor = BlancoBase,
+                            leadingIconColor = GoldColor,
+                            trailingIconColor = GoldColor
+                        )
+                    )
                 }
             }
         }
@@ -1191,54 +1309,18 @@ fun TarjetaPrincipal(
                 if (estaCargando) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = GoldColor)
                 } else if (error != null) {
-                    Column(
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.WifiOff,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = error,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    lineHeight = 20.sp
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(
-                                    onClick = alRefrescar,
-                                    colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = cadenas.reintentar, style = TextoBoton)
-                                }
-                            }
-                        }
+                        TarjetaErrorAmigable(
+                            categoria = com.example.codise.utils.ManejadorErrores.determinarCategoriaPorMensaje(error),
+                            mensajePersonalizado = error,
+                            alReintentar = alRefrescar,
+                            alVolverInicio = alRefrescar
+                        )
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
