@@ -527,10 +527,16 @@ fun AplicacionAutenticada(
                         alCambiarFoto = { uri ->
                             viewModelPerfil.actualizarFotoPerfil(token, uri)
                         },
+                        alCambiarFotoEmpresa = { idEmpresa, uri ->
+                            viewModelPerfil.actualizarFotoEmpresa(token, idEmpresa, uri)
+                        },
+                        alGuardarEmpresa = { empresaActualizada, uriFoto ->
+                            viewModelPerfil.actualizarEmpresa(token, empresaActualizada, uriFoto)
+                        },
                         perfilActivo = perfilActivo,
                         estadoUiPerfil = estadoUiPerfil,
                         estadoUiEmpresa = estadoUiEmpresa,
-                        alRegistrarEmpresa = { t, emp -> viewModelPerfil.registrarEmpresa(t, emp) },
+                        alRegistrarEmpresa = { t, emp, uri -> viewModelPerfil.registrarEmpresa(t, emp, uri) },
                         ciudades = ciudades,
                         alCerrarSesion = alCerrarSesion,
                         mostrarFormulario = mostrarFormularioPerfil,
@@ -609,6 +615,7 @@ fun AplicacionAutenticada(
                     PantallaPublicaciones(
                         viewModel = viewModelPublicaciones,
                         idEmpresaActiva = idEmpresaActiva,
+                        empresasUsuario = empresasUsuario,
                         alHacerClicEnSubir = { pantallaActual = "upload_publication" },
                         alHacerClicEnAutor = { pub ->
                             perfilPublicoSeleccionado = pub.aPerfilParametros()
@@ -694,6 +701,7 @@ fun AplicacionAutenticada(
                             parametros = parametros,
                             viewModelPublicaciones = viewModelPublicaciones,
                             idEmpresaActiva = idEmpresaActiva,
+                            empresasUsuario = empresasUsuario,
                             alRegresar = { pantallaActual = "publications" },
                             paddingSuperior = paddingSuperior
                         )

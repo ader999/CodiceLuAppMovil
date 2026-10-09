@@ -217,14 +217,34 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
         _estadoUiEmpresa.value = EstadoUiEmpresa.Inactivo
     }
 
-    fun registrarEmpresa(token: String, empresa: Empresa) {
+    fun registrarEmpresa(token: String, empresa: Empresa, uriFoto: Uri? = null) {
         viewModelScope.launch {
             _estadoUiEmpresa.value = EstadoUiEmpresa.Cargando
             try {
                 val encabezadoAuth = if (token.startsWith("Bearer ")) token else "Bearer $token"
                 val respuesta = servicioApi.registrarEmpresa(encabezadoAuth, empresa)
-                if (respuesta.isSuccessful) {
-                    val empresaRegistrada = respuesta.body()!!
+                if (respuesta.isSuccessful && respuesta.body() != null) {
+                    var empresaRegistrada = respuesta.body()!!
+
+                    if (uriFoto != null && empresaRegistrada.id != null) {
+                        try {
+                            val archivo = obtenerArchivoDeUri(uriFoto)
+                            val archivoPeticion = archivo.asRequestBody("image/*".toMediaTypeOrNull())
+                            val parteFoto = MultipartBody.Part.createFormData("imagen_portada", archivo.name, archivoPeticion)
+                            val respFoto = servicioApi.actualizarFotoEmpresa(
+                                token = encabezadoAuth,
+                                idEmpresa = empresaRegistrada.id,
+                                imagen_portada = parteFoto,
+                                idEmpresaHeader = empresaRegistrada.id.toString()
+                            )
+                            if (respFoto.isSuccessful && respFoto.body() != null) {
+                                empresaRegistrada = respFoto.body()!!
+                            }
+                        } catch (eFoto: Exception) {
+                            eFoto.printStackTrace()
+                        }
+                    }
+
                     _empresasUsuario.value = _empresasUsuario.value + empresaRegistrada
 
                     try {
@@ -238,6 +258,90 @@ class ViewModelPerfil(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     }
 
                     _estadoUiEmpresa.value = EstadoUiEmpresa.Exito(empresaRegistrada)
+                } else {
+                    _estadoUiEmpresa.value = EstadoUiEmpresa.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
+                }
+            } catch (e: Exception) {
+                _estadoUiEmpresa.value = EstadoUiEmpresa.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
+            }
+        }
+    }
+
+    fun actualizarFotoEmpresa(token: String, idEmpresa: Int, uri: Uri) {
+        viewModelScope.launch {
+            _estadoUiEmpresa.value = EstadoUiEmpresa.Cargando
+            try {
+                val archivo = obtenerArchivoDeUri(uri)
+                val archivoPeticion = archivo.asRequestBody("image/*".toMediaTypeOrNull())
+                val parteFoto = MultipartBody.Part.createFormData("imagen_portada", archivo.name, archivoPeticion)
+                val encabezadoAuth = if (token.startsWith("Bearer ")) token else "Bearer $token"
+
+                val respuesta = servicioApi.actualizarFotoEmpresa(
+                    token = encabezadoAuth,
+                    idEmpresa = idEmpresa,
+                    imagen_portada = parteFoto,
+                    idEmpresaHeader = idEmpresa.toString()
+                )
+                if (respuesta.isSuccessful && respuesta.body() != null) {
+                    val empresaActualizada = respuesta.body()!!
+                    _empresasUsuario.value = _empresasUsuario.value.map {
+                        if (it.id == empresaActualizada.id) empresaActualizada else it
+                    }
+                    if (_perfilActivo.value is PerfilActivo.EmpresaActiva && (_perfilActivo.value as PerfilActivo.EmpresaActiva).empresa.id == empresaActualizada.id) {
+                        _perfilActivo.value = PerfilActivo.EmpresaActiva(empresaActualizada)
+                    }
+                    _estadoUiEmpresa.value = EstadoUiEmpresa.Exito(empresaActualizada)
+                } else {
+                    _estadoUiEmpresa.value = EstadoUiEmpresa.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
+                }
+            } catch (e: Exception) {
+                _estadoUiEmpresa.value = EstadoUiEmpresa.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
+            }
+        }
+    }
+
+    fun actualizarEmpresa(token: String, empresa: Empresa, uriFoto: Uri? = null) {
+        viewModelScope.launch {
+            _estadoUiEmpresa.value = EstadoUiEmpresa.Cargando
+            try {
+                val encabezadoAuth = if (token.startsWith("Bearer ")) token else "Bearer $token"
+                val idEmp = empresa.id ?: return@launch
+
+                val respuesta = servicioApi.actualizarEmpresa(
+                    token = encabezadoAuth,
+                    idEmpresa = idEmp,
+                    empresa = empresa,
+                    idEmpresaHeader = idEmp.toString()
+                )
+                if (respuesta.isSuccessful && respuesta.body() != null) {
+                    var empresaActualizada = respuesta.body()!!
+
+                    if (uriFoto != null) {
+                        try {
+                            val archivo = obtenerArchivoDeUri(uriFoto)
+                            val archivoPeticion = archivo.asRequestBody("image/*".toMediaTypeOrNull())
+                            val parteFoto = MultipartBody.Part.createFormData("imagen_portada", archivo.name, archivoPeticion)
+                            val respFoto = servicioApi.actualizarFotoEmpresa(
+                                token = encabezadoAuth,
+                                idEmpresa = idEmp,
+                                imagen_portada = parteFoto,
+                                idEmpresaHeader = idEmp.toString()
+                            )
+                            if (respFoto.isSuccessful && respFoto.body() != null) {
+                                empresaActualizada = respFoto.body()!!
+                            }
+                        } catch (eFoto: Exception) {
+                            eFoto.printStackTrace()
+                        }
+                    }
+
+                    _empresasUsuario.value = _empresasUsuario.value.map {
+                        if (it.id == empresaActualizada.id) empresaActualizada else it
+                    }
+                    if (_perfilActivo.value is PerfilActivo.EmpresaActiva && (_perfilActivo.value as PerfilActivo.EmpresaActiva).empresa.id == empresaActualizada.id) {
+                        _perfilActivo.value = PerfilActivo.EmpresaActiva(empresaActualizada)
+                    }
+                    _estadoUiEmpresa.value = EstadoUiEmpresa.Exito(empresaActualizada)
                 } else {
                     _estadoUiEmpresa.value = EstadoUiEmpresa.Error(com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
                 }

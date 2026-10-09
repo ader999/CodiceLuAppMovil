@@ -49,10 +49,12 @@ fun ContenidoPerfil(
     alVolver: () -> Unit,
     alGuardar: (Usuario, Uri?) -> Unit,
     alCambiarFoto: (Uri) -> Unit = {},
+    alCambiarFotoEmpresa: (Int, Uri) -> Unit = { _, _ -> },
+    alGuardarEmpresa: (Empresa, Uri?) -> Unit = { _, _ -> },
     perfilActivo: PerfilActivo = PerfilActivo.UsuarioActivo,
     estadoUiPerfil: EstadoUiPerfil,
     estadoUiEmpresa: EstadoUiEmpresa,
-    alRegistrarEmpresa: (String, Empresa) -> Unit,
+    alRegistrarEmpresa: (String, Empresa, Uri?) -> Unit = { _, _, _ -> },
     ciudades: List<Ciudad>,
     alCerrarSesion: () -> Unit,
     mostrarFormulario: Boolean = false,
@@ -72,13 +74,23 @@ fun ContenidoPerfil(
     var telefono by remember(usuario) { mutableStateOf(usuario.telefono.orEmpty()) }
     var uriFotoSeleccionada by remember { mutableStateOf<Uri?>(null) }
 
+    val esPerfilEmpresa = perfilActivo is PerfilActivo.EmpresaActiva
+    val empresaActiva = if (esPerfilEmpresa) (perfilActivo as PerfilActivo.EmpresaActiva).empresa else null
+    val fotoVisualizar = if (esPerfilEmpresa) empresaActiva?.imagenPortada else usuario.fotoPerfil
+
     val lanzadorFoto = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
             uriFotoSeleccionada = uri
-            if (!mostrarFormulario) {
-                alCambiarFoto(uri)
+            if (esPerfilEmpresa && empresaActiva?.id != null) {
+                if (!mostrarFormulario) {
+                    alCambiarFotoEmpresa(empresaActiva.id, uri)
+                }
+            } else {
+                if (!mostrarFormulario) {
+                    alCambiarFoto(uri)
+                }
             }
         }
     }
@@ -91,19 +103,27 @@ fun ContenidoPerfil(
         telefono = usuario.telefono.orEmpty()
     }
 
+    LaunchedEffect(perfilActivo) {
+        uriFotoSeleccionada = null
+    }
+
     var mostrarFormularioEmpresa by remember { mutableStateOf(false) }
     var mostrarBottomSheetPerfil by remember { mutableStateOf(false) }
     val estaCargandoPerfil = estadoUiPerfil is EstadoUiPerfil.Cargando
+    val estaCargandoEmpresa = estadoUiEmpresa is EstadoUiEmpresa.Cargando
 
     LaunchedEffect(estadoUiEmpresa) {
         if (estadoUiEmpresa is EstadoUiEmpresa.Exito) {
             mostrarFormularioEmpresa = false
+            uriFotoSeleccionada = null
         }
     }
 
-    val esPerfilEmpresa = perfilActivo is PerfilActivo.EmpresaActiva
-    val empresaActiva = if (esPerfilEmpresa) (perfilActivo as PerfilActivo.EmpresaActiva).empresa else null
-    val fotoVisualizar = if (esPerfilEmpresa) empresaActiva?.imagenPortada else usuario.fotoPerfil
+    LaunchedEffect(estadoUiPerfil) {
+        if (estadoUiPerfil is EstadoUiPerfil.Exito) {
+            uriFotoSeleccionada = null
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -112,47 +132,57 @@ fun ContenidoPerfil(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Icono de perfil con foto de usuario y opción para cambiarla
+        // Icono de perfil con foto de usuario o empresa y opción para cambiarla
+        val estaCargandoAvatar = if (esPerfilEmpresa) estaCargandoEmpresa else estaCargandoPerfil
         IconoPerfilUsuario(
             fotoPerfil = fotoVisualizar,
             uriFotoLocal = uriFotoSeleccionada,
             alHacerClicEnCambiarFoto = {
-                if (!esPerfilEmpresa) {
-                    lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }
+                lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             },
-            estaCargando = estaCargandoPerfil,
+            estaCargando = estaCargandoAvatar,
             tamano = if (mostrarFormulario) 100.dp else 110.dp,
             esEmpresa = esPerfilEmpresa
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (!esPerfilEmpresa) {
-            Text(
-                text = cadenas.cambiarFoto,
-                color = AzulPetroleo.copy(alpha = 0.7f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable {
-                    lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }
-            )
-        }
+        Text(
+            text = if (esPerfilEmpresa) "Cambiar foto de la empresa" else cadenas.cambiarFoto,
+            color = AzulPetroleo.copy(alpha = 0.7f),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clickable {
+                lanzadorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (mostrarFormulario && !esPerfilEmpresa) {
-            // VISTA FORMULARIO DE EDICIÓN
-            Text(
-                text = cadenas.editarPerfil,
-                color = AzulPetroleo,
-                style = TitularPrincipal,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+        if (mostrarFormulario) {
+            if (esPerfilEmpresa && empresaActiva != null) {
+                // VISTA FORMULARIO DE EDICIÓN DE EMPRESA
+                FormularioEdicionEmpresa(
+                    empresa = empresaActiva,
+                    ciudades = ciudades,
+                    estadoUiEmpresa = estadoUiEmpresa,
+                    alGuardar = { empActualizada, uriFoto ->
+                        alGuardarEmpresa(empActualizada, uriFoto)
+                    },
+                    alCancelar = alAlternarFormulario,
+                    uriFotoSeleccionada = uriFotoSeleccionada
+                )
+            } else if (!esPerfilEmpresa) {
+                // VISTA FORMULARIO DE EDICIÓN
+                Text(
+                    text = cadenas.editarPerfil,
+                    color = AzulPetroleo,
+                    style = TitularPrincipal,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = BlancoBase),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -226,7 +256,8 @@ fun ContenidoPerfil(
             ) {
                 Text(cadenas.cancelar, style = TextoBoton)
             }
-        } else {
+        }
+    } else {
             val esProtagonistaEfectivo = usuario.esProtagonista || empresasUsuario.isNotEmpty()
             
             // VISTA INFORMACIÓN DE PERFIL (VISTA PRINCIPAL)
@@ -760,23 +791,21 @@ fun IconoPerfilUsuario(
         }
 
         // Insignia con icono de cámara
-        if (!esEmpresa) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .align(Alignment.BottomEnd)
-                    .clip(CircleShape)
-                    .background(GoldColor)
-                    .border(1.5.dp, BlancoBase, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Cambiar foto",
-                    tint = AzulPetroleo,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .align(Alignment.BottomEnd)
+                .clip(CircleShape)
+                .background(GoldColor)
+                .border(1.5.dp, BlancoBase, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.CameraAlt,
+                contentDescription = "Cambiar foto",
+                tint = AzulPetroleo,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
@@ -815,13 +844,26 @@ fun TarjetaEmpresaUsuario(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Business,
-                    contentDescription = null,
-                    tint = AzulPetroleo,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                if (!empresa.imagenPortada.isNullOrBlank()) {
+                    AsyncImage(
+                        model = empresa.imagenPortada.aUrlCompleta(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .border(1.2.dp, GoldColor, CircleShape),
+                        contentScale = ContentScale.Crop,
+                        error = androidx.compose.ui.graphics.painter.ColorPainter(AzulPetroleo)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Business,
+                        contentDescription = null,
+                        tint = AzulPetroleo,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = empresa.nombre,
                     fontWeight = FontWeight.Bold,
@@ -1454,7 +1496,7 @@ fun FormularioRegistroEmpresa(
     token: String,
     ciudades: List<Ciudad>,
     estadoUiEmpresa: EstadoUiEmpresa,
-    alRegistrar: (String, Empresa) -> Unit,
+    alRegistrar: (String, Empresa, Uri?) -> Unit,
     alCancelar: () -> Unit
 ) {
     var nombre by remember { mutableStateOf("") }
@@ -1467,6 +1509,13 @@ fun FormularioRegistroEmpresa(
     var email by remember { mutableStateOf("") }
     var sitioWeb by remember { mutableStateOf("") }
     var aceptaInversiones by remember { mutableStateOf(false) }
+    var uriFotoEmpresa by remember { mutableStateOf<Uri?>(null) }
+
+    val lanzadorFotoEmpresa = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        uriFotoEmpresa = uri
+    }
 
     var ciudadesExpandidas by remember { mutableStateOf(false) }
 
@@ -1493,6 +1542,61 @@ fun FormularioRegistroEmpresa(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Selector de foto/logo de la empresa
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(90.dp)
+                        .clip(CircleShape)
+                        .background(AzulPetroleo.copy(alpha = 0.08f))
+                        .border(2.dp, GoldColor, CircleShape)
+                        .clickable {
+                            lanzadorFotoEmpresa.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (uriFotoEmpresa != null) {
+                        AsyncImage(
+                            model = uriFotoEmpresa,
+                            contentDescription = "Foto de empresa",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = null,
+                                tint = AzulPetroleo,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Añadir Foto",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AzulPetroleo
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (uriFotoEmpresa != null) "Toca para cambiar foto" else "Logo o foto de perfil (Opcional)",
+                    fontSize = 12.sp,
+                    color = AzulPetroleo.copy(alpha = 0.7f),
+                    modifier = Modifier.clickable {
+                        lanzadorFotoEmpresa.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                )
+            }
+
             CampoTextoPerfil(etiqueta = "Nombre de la Empresa", valor = nombre, alCambiarValor = { nombre = it })
             CampoTextoPerfil(etiqueta = "Descripción", valor = descripcion, alCambiarValor = { descripcion = it })
 
@@ -1650,7 +1754,7 @@ fun FormularioRegistroEmpresa(
                         longitud = ciudad.longitudCentro,
                         aceptaInversiones = aceptaInversiones
                     )
-                    alRegistrar(token, empresa)
+                    alRegistrar(token, empresa, uriFotoEmpresa)
                 }
             },
             modifier = Modifier.weight(1f).height(56.dp),
@@ -1669,16 +1773,228 @@ fun FormularioRegistroEmpresa(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun FormularioEdicionEmpresa(
+    empresa: Empresa,
+    ciudades: List<Ciudad>,
+    estadoUiEmpresa: EstadoUiEmpresa,
+    alGuardar: (Empresa, Uri?) -> Unit,
+    alCancelar: () -> Unit,
+    uriFotoSeleccionada: Uri?
+) {
+    var nombre by remember(empresa) { mutableStateOf(empresa.nombre) }
+    var descripcion by remember(empresa) { mutableStateOf(empresa.descripcion) }
+    var categoriaSeleccionada by remember(empresa) {
+        mutableStateOf(CATEGORIAS_EMPRESA.find { it.clave == empresa.categoria } ?: CATEGORIAS_EMPRESA.last())
+    }
+    var categoriasExpandidas by remember { mutableStateOf(false) }
+    var ciudadSeleccionada by remember(empresa, ciudades) {
+        mutableStateOf(ciudades.find { it.id == empresa.ciudad })
+    }
+    var ciudadesExpandidas by remember { mutableStateOf(false) }
+    var direccion by remember(empresa) { mutableStateOf(empresa.direccion) }
+    var telefono by remember(empresa) { mutableStateOf(empresa.telefonoContacto) }
+    var whatsapp by remember(empresa) { mutableStateOf(empresa.numeroWhatsapp.orEmpty()) }
+    var email by remember(empresa) { mutableStateOf(empresa.emailContacto) }
+    var sitioWeb by remember(empresa) { mutableStateOf(empresa.sitioWeb.orEmpty()) }
+    var aceptaInversiones by remember(empresa) { mutableStateOf(empresa.aceptaInversiones) }
+
+    val estaCargando = estadoUiEmpresa is EstadoUiEmpresa.Cargando
+
+    Text(
+        text = "Editar Empresa",
+        color = AzulPetroleo,
+        style = TitularPrincipal,
+        modifier = Modifier.padding(bottom = 16.dp)
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = BlancoBase),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CampoTextoPerfil(etiqueta = "Nombre de la Empresa", valor = nombre, alCambiarValor = { nombre = it })
+            CampoTextoPerfil(etiqueta = "Descripción", valor = descripcion, alCambiarValor = { descripcion = it })
+
+            // Selector de categoría
+            Column {
+                Text(text = "Categoría", color = AzulPetroleo, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                ExposedDropdownMenuBox(
+                    expanded = categoriasExpandidas,
+                    onExpandedChange = { categoriasExpandidas = !categoriasExpandidas }
+                ) {
+                    OutlinedTextField(
+                        value = categoriaSeleccionada.etiqueta,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        shape = RoundedCornerShape(8.dp),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoriasExpandidas) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = AzulPetroleo,
+                            unfocusedTextColor = AzulPetroleo,
+                            focusedBorderColor = AzulPetroleo,
+                            unfocusedBorderColor = GrisClaro
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = categoriasExpandidas,
+                        onDismissRequest = { categoriasExpandidas = false }
+                    ) {
+                        CATEGORIAS_EMPRESA.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(cat.etiqueta) },
+                                onClick = {
+                                    categoriaSeleccionada = cat
+                                    categoriasExpandidas = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Selector de ciudad
+            Column {
+                Text(text = "Ciudad", color = AzulPetroleo, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                ExposedDropdownMenuBox(
+                    expanded = ciudadesExpandidas,
+                    onExpandedChange = { ciudadesExpandidas = !ciudadesExpandidas }
+                ) {
+                    OutlinedTextField(
+                        value = ciudadSeleccionada?.nombre ?: "Seleccionar ciudad",
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        shape = RoundedCornerShape(8.dp),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = ciudadesExpandidas) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = AzulPetroleo,
+                            unfocusedTextColor = AzulPetroleo,
+                            focusedBorderColor = AzulPetroleo,
+                            unfocusedBorderColor = GrisClaro
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = ciudadesExpandidas,
+                        onDismissRequest = { ciudadesExpandidas = false }
+                    ) {
+                        ciudades.forEach { ciudad ->
+                            DropdownMenuItem(
+                                text = { Text(ciudad.nombre) },
+                                onClick = {
+                                    ciudadSeleccionada = ciudad
+                                    ciudadesExpandidas = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            CampoTextoPerfil(etiqueta = "Dirección", valor = direccion, alCambiarValor = { direccion = it })
+            CampoTextoPerfil(etiqueta = "Teléfono de Contacto", valor = telefono, alCambiarValor = { telefono = it })
+            CampoTextoPerfil(etiqueta = "WhatsApp (ej: +50588888888)", valor = whatsapp, alCambiarValor = { whatsapp = it })
+            CampoTextoPerfil(etiqueta = "Correo de Contacto", valor = email, alCambiarValor = { email = it })
+            CampoTextoPerfil(etiqueta = "Sitio Web (Opcional)", valor = sitioWeb, alCambiarValor = { sitioWeb = it })
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { aceptaInversiones = !aceptaInversiones }
+            ) {
+                Checkbox(
+                    checked = aceptaInversiones,
+                    onCheckedChange = { aceptaInversiones = it },
+                    colors = CheckboxDefaults.colors(checkedColor = AzulPetroleo)
+                )
+                Text("¿Acepta inversiones?", color = AzulPetroleo, fontSize = 16.sp)
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    if (estadoUiEmpresa is EstadoUiEmpresa.Error) {
+        Text(
+            text = estadoUiEmpresa.mensaje,
+            color = Color.Red,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+    }
+
+    Button(
+        onClick = {
+            val ciudadId = ciudadSeleccionada?.id ?: empresa.ciudad
+            val urlWebFormateada = sitioWeb.trim().takeIf { it.isNotBlank() }?.let { url ->
+                if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) {
+                    "https://$url"
+                } else {
+                    url
+                }
+            }
+            val empresaActualizada = empresa.copy(
+                nombre = nombre.trim(),
+                descripcion = descripcion.trim(),
+                categoria = categoriaSeleccionada.clave,
+                ciudad = ciudadId,
+                direccion = direccion.trim(),
+                telefonoContacto = telefono.trim(),
+                numeroWhatsapp = whatsapp.trim().takeIf { it.isNotBlank() },
+                emailContacto = email.trim(),
+                sitioWeb = urlWebFormateada,
+                aceptaInversiones = aceptaInversiones
+            )
+            alGuardar(empresaActualizada, uriFotoSeleccionada)
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
+        shape = RoundedCornerShape(12.dp),
+        enabled = !estaCargando && nombre.isNotBlank()
+    ) {
+        if (estaCargando) {
+            CircularProgressIndicator(color = GoldColor, modifier = Modifier.size(24.dp))
+        } else {
+            Text("Guardar Cambios", color = GoldColor, style = TextoBoton)
+        }
+    }
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    OutlinedButton(
+        onClick = alCancelar,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = AzulPetroleo),
+        border = androidx.compose.foundation.BorderStroke(1.dp, AzulPetroleo),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text("Cancelar", style = TextoBoton)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun PantallaPerfil(
     usuario: Usuario,
     token: String,
     alVolver: () -> Unit,
     alGuardar: (Usuario) -> Unit,
     alCambiarFoto: (Uri) -> Unit = {},
+    alCambiarFotoEmpresa: (Int, Uri) -> Unit = { _, _ -> },
+    alGuardarEmpresa: (Empresa, Uri?) -> Unit = { _, _ -> },
     perfilActivo: PerfilActivo = PerfilActivo.UsuarioActivo,
     estadoUiPerfil: EstadoUiPerfil,
     estadoUiEmpresa: EstadoUiEmpresa,
-    alRegistrarEmpresa: (String, Empresa) -> Unit,
+    alRegistrarEmpresa: (String, Empresa, Uri?) -> Unit = { _, _, _ -> },
     ciudades: List<Ciudad>,
     alCerrarSesion: () -> Unit,
     empresasUsuario: List<Empresa> = emptyList(),
@@ -1713,6 +2029,8 @@ fun PantallaPerfil(
                 alVolver = alVolver,
                 alGuardar = { u, _ -> alGuardar(u) },
                 alCambiarFoto = alCambiarFoto,
+                alCambiarFotoEmpresa = alCambiarFotoEmpresa,
+                alGuardarEmpresa = alGuardarEmpresa,
                 perfilActivo = perfilActivo,
                 estadoUiPerfil = estadoUiPerfil,
                 estadoUiEmpresa = estadoUiEmpresa,
@@ -1771,7 +2089,7 @@ fun VistaPreviaPantallaPerfil() {
             alGuardar = {},
             estadoUiPerfil = EstadoUiPerfil.Inactivo,
             estadoUiEmpresa = EstadoUiEmpresa.Inactivo,
-            alRegistrarEmpresa = { _, _ -> },
+            alRegistrarEmpresa = { _, _, _ -> },
             ciudades = emptyList(),
             alCerrarSesion = {}
         )

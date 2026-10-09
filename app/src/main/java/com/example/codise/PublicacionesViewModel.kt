@@ -200,6 +200,117 @@ class ViewModelPublicaciones(aplicacion: Application) : AndroidViewModel(aplicac
         }
     }
 
+    fun eliminarPublicacion(
+        idPublicacion: Int,
+        idEmpresaContexto: Int? = _idEmpresaContexto,
+        alTerminar: (exito: Boolean, mensaje: String?) -> Unit
+    ) {
+        val sesion = administradorSesion.obtenerSesion()
+        if (sesion == null) {
+            alTerminar(false, "Debes iniciar sesión.")
+            return
+        }
+        val token = "Bearer ${sesion.tokens.access}"
+
+        viewModelScope.launch {
+            try {
+                val respuesta = servicioApi.eliminarPublicacion(
+                    token = token,
+                    idEmpresaHeader = idEmpresaContexto?.toString(),
+                    idPublicacion = idPublicacion
+                )
+                if (respuesta.isSuccessful) {
+                    val estadoActual = _estadoUi.value
+                    if (estadoActual is EstadoUiPublicaciones.Exito) {
+                        val listaActualizada = estadoActual.publicaciones.filter { it.id != idPublicacion }
+                        _estadoUi.value = EstadoUiPublicaciones.Exito(listaActualizada)
+                    }
+                    alTerminar(true, null)
+                } else {
+                    alTerminar(false, com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta))
+                }
+            } catch (e: Exception) {
+                alTerminar(false, com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e))
+            }
+        }
+    }
+
+    fun actualizarPublicacion(
+        idPublicacion: Int,
+        descripcion: String,
+        idCiudad: Int? = null,
+        urisImagenes: List<Uri>? = null,
+        idEmpresaContexto: Int? = _idEmpresaContexto,
+        alTerminar: (exito: Boolean, mensaje: String?, publicacionActualizada: Publicacion?) -> Unit
+    ) {
+        val sesion = administradorSesion.obtenerSesion()
+        if (sesion == null) {
+            alTerminar(false, "Debes iniciar sesión.", null)
+            return
+        }
+        val token = "Bearer ${sesion.tokens.access}"
+
+        viewModelScope.launch {
+            try {
+                val respuesta = if (!urisImagenes.isNullOrEmpty()) {
+                    val cuerpoDescripcion = descripcion.toRequestBody("text/plain".toMediaTypeOrNull())
+                    var imagenPrincipal: MultipartBody.Part? = null
+                    val imagenesSecundarias = mutableListOf<MultipartBody.Part>()
+
+                    urisImagenes.forEachIndexed { indice, uri ->
+                        val archivo = obtenerArchivoDeUri(uri)
+                        val archivoPeticion = archivo.asRequestBody("image/*".toMediaTypeOrNull())
+                        if (indice == 0) {
+                            imagenPrincipal = MultipartBody.Part.createFormData("imagen_principal", archivo.name, archivoPeticion)
+                        } else {
+                            imagenesSecundarias.add(MultipartBody.Part.createFormData("imagenes", archivo.name, archivoPeticion))
+                        }
+                    }
+
+                    servicioApi.actualizarPublicacionMultipart(
+                        token = token,
+                        idEmpresaHeader = idEmpresaContexto?.toString(),
+                        idPublicacion = idPublicacion,
+                        descripcion = cuerpoDescripcion,
+                        idCiudad = idCiudad,
+                        imagen_principal = imagenPrincipal,
+                        imagenes = imagenesSecundarias.ifEmpty { null }
+                    )
+                } else {
+                    servicioApi.actualizarPublicacion(
+                        token = token,
+                        idEmpresaHeader = idEmpresaContexto?.toString(),
+                        idPublicacion = idPublicacion,
+                        solicitud = SolicitudActualizarPublicacion(descripcion = descripcion, ciudad = idCiudad)
+                    )
+                }
+
+                if (respuesta.isSuccessful && respuesta.body() != null) {
+                    val pubActualizada = respuesta.body()!!
+                    val estadoActual = _estadoUi.value
+                    if (estadoActual is EstadoUiPublicaciones.Exito) {
+                        val listaActualizada = estadoActual.publicaciones.map {
+                            if (it.id == idPublicacion) {
+                                pubActualizada.copy(
+                                    usuarioHaDadoLike = it.usuarioHaDadoLike,
+                                    totalLikes = if (pubActualizada.totalLikes > 0) pubActualizada.totalLikes else it.totalLikes,
+                                    comentarios = it.comentarios,
+                                    totalComentarios = if (pubActualizada.totalComentarios > 0) pubActualizada.totalComentarios else it.totalComentarios
+                                )
+                            } else it
+                        }
+                        _estadoUi.value = EstadoUiPublicaciones.Exito(listaActualizada)
+                    }
+                    alTerminar(true, null, pubActualizada)
+                } else {
+                    alTerminar(false, com.example.codise.utils.ManejadorErrores.obtenerMensajeErrorHttp(respuesta), null)
+                }
+            } catch (e: Exception) {
+                alTerminar(false, com.example.codise.utils.ManejadorErrores.obtenerMensajeError(e), null)
+            }
+        }
+    }
+
     fun subirPublicacion(
         descripcion: String,
         idCiudad: Int?,

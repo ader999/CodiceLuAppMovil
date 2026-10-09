@@ -2,6 +2,7 @@ package com.example.codise
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -88,6 +89,7 @@ fun PantallaDetalleUsuario(
     parametros: PerfilPublicoParametros,
     viewModelPublicaciones: ViewModelPublicaciones,
     idEmpresaActiva: Int? = null,
+    empresasUsuario: List<Empresa> = emptyList(),
     alRegresar: () -> Unit,
     paddingSuperior: Dp = 0.dp
 ) {
@@ -97,12 +99,19 @@ fun PantallaDetalleUsuario(
     val cadenas = LocalCadenas.current
     val servicioApi = remember { ServicioApi.obtenerInstancia(contexto) }
     val administradorSesion = remember { AdministradorSesion.obtenerInstancia(contexto) }
+    val sesion by administradorSesion.sesion.collectAsState()
+    val usuarioActualId = sesion?.usuario?.id
 
     var empresaDetalle by remember { mutableStateOf<Empresa?>(null) }
     var estaCargandoEmpresa by remember { mutableStateOf(parametros.esEmpresa) }
 
     var publicaciones by remember { mutableStateOf<List<Publicacion>>(emptyList()) }
     var estaCargandoPublicaciones by remember { mutableStateOf(true) }
+
+    var publicacionParaEditar by remember { mutableStateOf<Publicacion?>(null) }
+    var publicacionParaEliminar by remember { mutableStateOf<Publicacion?>(null) }
+    var estaGuardandoEdicion by remember { mutableStateOf(false) }
+    var estaEliminando by remember { mutableStateOf(false) }
 
     var imagenesVistaPrevia by remember { mutableStateOf<List<String>?>(null) }
     var paginaInicialVistaPrevia by remember { mutableIntStateOf(0) }
@@ -171,33 +180,14 @@ fun PantallaDetalleUsuario(
             .fillMaxSize()
             .background(Celeste)
     ) {
-        // Barra superior con botón de volver y título
+        // Barra superior con título
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, top = paddingSuperior + 10.dp, end = 16.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                onClick = alRegresar,
-                shape = CircleShape,
-                color = Color.White,
-                shadowElevation = 3.dp,
-                modifier = Modifier.size(42.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = cadenas.regresar,
-                        tint = AzulPetroleo,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 val titulo = if (parametros.esEmpresa) {
                     empresaDetalle?.nombre ?: parametros.empresaNombre ?: "Perfil de Empresa"
                 } else {
@@ -652,6 +642,17 @@ fun PantallaDetalleUsuario(
                 }
             } else {
                 items(publicaciones, key = { it.id }) { publicacion ->
+                    val puedeEditarOEliminar = if (usuarioActualId == null) {
+                        false
+                    } else if (publicacion.esPublicacionEmpresa) {
+                        val pubEmpresaId = publicacion.empresa ?: publicacion.empresaId
+                        (idEmpresaActiva != null && idEmpresaActiva == pubEmpresaId) ||
+                        (pubEmpresaId != null && empresasUsuario.any { it.id == pubEmpresaId }) ||
+                        publicacion.autor == usuarioActualId
+                    } else {
+                        publicacion.autor == usuarioActualId
+                    }
+
                     TarjetaPublicacion(
                         publicacion = publicacion,
                         alHacerClicEnLike = {
@@ -673,7 +674,10 @@ fun PantallaDetalleUsuario(
                             imagenesVistaPrevia = imagenes
                             paginaInicialVistaPrevia = index
                         },
-                        alHacerClicEnAutor = null
+                        alHacerClicEnAutor = null,
+                        puedeEditarOEliminar = puedeEditarOEliminar,
+                        alActualizar = { pub -> publicacionParaEditar = pub },
+                        alEliminar = { pub -> publicacionParaEliminar = pub }
                     )
                 }
             }
@@ -697,6 +701,61 @@ fun PantallaDetalleUsuario(
             idEmpresaActiva = idEmpresaActiva,
             alHacerClicEnAutor = null,
             alCerrar = { publicacionParaComentarios = null }
+        )
+    }
+
+    if (publicacionParaEditar != null) {
+        DialogoEditarPublicacion(
+            publicacion = publicacionParaEditar!!,
+            alCerrar = { publicacionParaEditar = null },
+            alConfirmar = { nuevaDescripcion, nuevasImagenes ->
+                val pub = publicacionParaEditar ?: return@DialogoEditarPublicacion
+                estaGuardandoEdicion = true
+                val ctxEmpresa = if (pub.esPublicacionEmpresa) (pub.empresa ?: pub.empresaId ?: idEmpresaActiva) else null
+                viewModelPublicaciones.actualizarPublicacion(
+                    idPublicacion = pub.id,
+                    descripcion = nuevaDescripcion,
+                    idCiudad = pub.ciudad,
+                    urisImagenes = nuevasImagenes,
+                    idEmpresaContexto = ctxEmpresa
+                ) { exito, error, pubActualizada ->
+                    estaGuardandoEdicion = false
+                    if (exito && pubActualizada != null) {
+                        publicaciones = publicaciones.map { if (it.id == pub.id) pubActualizada else it }
+                        Toast.makeText(contexto, cadenas.publicacionActualizada, Toast.LENGTH_SHORT).show()
+                        publicacionParaEditar = null
+                    } else {
+                        Toast.makeText(contexto, error ?: "Error al actualizar", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            estaGuardando = estaGuardandoEdicion
+        )
+    }
+
+    if (publicacionParaEliminar != null) {
+        DialogoConfirmarEliminarPublicacion(
+            publicacion = publicacionParaEliminar!!,
+            alCerrar = { publicacionParaEliminar = null },
+            alConfirmar = {
+                val pub = publicacionParaEliminar ?: return@DialogoConfirmarEliminarPublicacion
+                estaEliminando = true
+                val ctxEmpresa = if (pub.esPublicacionEmpresa) (pub.empresa ?: pub.empresaId ?: idEmpresaActiva) else null
+                viewModelPublicaciones.eliminarPublicacion(
+                    idPublicacion = pub.id,
+                    idEmpresaContexto = ctxEmpresa
+                ) { exito, error ->
+                    estaEliminando = false
+                    if (exito) {
+                        publicaciones = publicaciones.filter { it.id != pub.id }
+                        Toast.makeText(contexto, cadenas.publicacionEliminada, Toast.LENGTH_SHORT).show()
+                        publicacionParaEliminar = null
+                    } else {
+                        Toast.makeText(contexto, error ?: "Error al eliminar", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            estaEliminando = estaEliminando
         )
     }
 }

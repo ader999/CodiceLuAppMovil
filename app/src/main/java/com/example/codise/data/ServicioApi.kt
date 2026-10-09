@@ -134,6 +134,23 @@ interface ServicioApi {
         @Body empresa: Empresa
     ): Response<Empresa>
 
+    @Multipart
+    @PATCH("api/empresas/{id}/")
+    suspend fun actualizarFotoEmpresa(
+        @Header("Authorization") token: String,
+        @Path("id") idEmpresa: Int,
+        @Part imagen_portada: MultipartBody.Part,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null
+    ): Response<Empresa>
+
+    @PATCH("api/empresas/{id}/")
+    suspend fun actualizarEmpresa(
+        @Header("Authorization") token: String,
+        @Path("id") idEmpresa: Int,
+        @Body empresa: Empresa,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null
+    ): Response<Empresa>
+
     @GET("api/publicaciones/")
     suspend fun obtenerPublicaciones(
         @Header("Authorization") token: String? = null,
@@ -157,6 +174,33 @@ interface ServicioApi {
         @Part imagen_principal: MultipartBody.Part? = null,
         @Part imagenes: List<MultipartBody.Part>? = null
     ): Response<Publicacion>
+
+    @PATCH("api/publicaciones/{id}/")
+    suspend fun actualizarPublicacion(
+        @Header("Authorization") token: String,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null,
+        @Path("id") idPublicacion: Int,
+        @Body solicitud: SolicitudActualizarPublicacion
+    ): Response<Publicacion>
+
+    @Multipart
+    @PATCH("api/publicaciones/{id}/")
+    suspend fun actualizarPublicacionMultipart(
+        @Header("Authorization") token: String,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null,
+        @Path("id") idPublicacion: Int,
+        @Part("descripcion") descripcion: RequestBody,
+        @Part("ciudad") idCiudad: Int? = null,
+        @Part imagen_principal: MultipartBody.Part? = null,
+        @Part imagenes: List<MultipartBody.Part>? = null
+    ): Response<Publicacion>
+
+    @DELETE("api/publicaciones/{id}/")
+    suspend fun eliminarPublicacion(
+        @Header("Authorization") token: String,
+        @Header("X-Company-Id") idEmpresaHeader: String? = null,
+        @Path("id") idPublicacion: Int
+    ): Response<okhttp3.ResponseBody>
 
     @POST("api/publicaciones/{id}/like/")
     suspend fun alternarLike(
@@ -285,3 +329,8 @@ data class RespuestaAsistente(
         return ids.distinct()
     }
 }
+
+data class SolicitudActualizarPublicacion(
+    @com.google.gson.annotations.SerializedName("descripcion") val descripcion: String,
+    @com.google.gson.annotations.SerializedName("ciudad") val ciudad: Int? = null
+)

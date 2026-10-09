@@ -38,7 +38,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.codise.data.AdministradorSesion
 import com.example.codise.data.ComentarioPublicacion
+import com.example.codise.data.Empresa
 import com.example.codise.data.Publicacion
 import com.example.codise.ui.theme.*
 import com.example.codise.utils.LocalCadenas
@@ -54,12 +56,23 @@ import java.util.Locale
 fun PantallaPublicaciones(
     viewModel: ViewModelPublicaciones,
     idEmpresaActiva: Int? = null,
+    empresasUsuario: List<Empresa> = emptyList(),
     alHacerClicEnSubir: () -> Unit = {},
     alHacerClicEnAutor: (Publicacion) -> Unit = {},
     alHacerClicEnAutorComentario: (ComentarioPublicacion) -> Unit = {},
     paddingSuperior: Dp = 0.dp
 ) {
+    val contexto = LocalContext.current
     val cadenas = LocalCadenas.current
+    val administradorSesion = remember { AdministradorSesion.obtenerInstancia(contexto) }
+    val sesion by administradorSesion.sesion.collectAsState()
+    val usuarioActualId = sesion?.usuario?.id
+
+    var publicacionParaEditar by remember { mutableStateOf<Publicacion?>(null) }
+    var publicacionParaEliminar by remember { mutableStateOf<Publicacion?>(null) }
+    var estaGuardandoEdicion by remember { mutableStateOf(false) }
+    var estaEliminando by remember { mutableStateOf(false) }
+
     val estadoUi by viewModel.estadoUi
     var imagenesVistaPrevia by remember { mutableStateOf<List<String>?>(null) }
     var paginaInicialVistaPrevia by remember { mutableIntStateOf(0) }
@@ -138,6 +151,17 @@ fun PantallaPublicaciones(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(publicaciones) { publicacion ->
+                                val puedeEditarOEliminar = if (usuarioActualId == null) {
+                                    false
+                                } else if (publicacion.esPublicacionEmpresa) {
+                                    val pubEmpresaId = publicacion.empresa ?: publicacion.empresaId
+                                    (idEmpresaActiva != null && idEmpresaActiva == pubEmpresaId) ||
+                                    (pubEmpresaId != null && empresasUsuario.any { it.id == pubEmpresaId }) ||
+                                    publicacion.autor == usuarioActualId
+                                } else {
+                                    publicacion.autor == usuarioActualId
+                                }
+
                                 TarjetaPublicacion(
                                     publicacion = publicacion,
                                     alHacerClicEnLike = { viewModel.alternarLike(publicacion.id, idEmpresaActiva) },
@@ -148,7 +172,10 @@ fun PantallaPublicaciones(
                                         imagenesVistaPrevia = imagenes
                                         paginaInicialVistaPrevia = pagina
                                     },
-                                    alHacerClicEnAutor = alHacerClicEnAutor
+                                    alHacerClicEnAutor = alHacerClicEnAutor,
+                                    puedeEditarOEliminar = puedeEditarOEliminar,
+                                    alActualizar = { pub -> publicacionParaEditar = pub },
+                                    alEliminar = { pub -> publicacionParaEliminar = pub }
                                 )
                             }
                         }
@@ -179,6 +206,59 @@ fun PantallaPublicaciones(
             idEmpresaActiva = idEmpresaActiva,
             alHacerClicEnAutor = alHacerClicEnAutorComentario,
             alCerrar = { publicacionSeleccionadaParaComentarios = null }
+        )
+    }
+
+    if (publicacionParaEditar != null) {
+        DialogoEditarPublicacion(
+            publicacion = publicacionParaEditar!!,
+            alCerrar = { publicacionParaEditar = null },
+            alConfirmar = { nuevaDescripcion, nuevasImagenes ->
+                val pub = publicacionParaEditar ?: return@DialogoEditarPublicacion
+                estaGuardandoEdicion = true
+                val ctxEmpresa = if (pub.esPublicacionEmpresa) (pub.empresa ?: pub.empresaId ?: idEmpresaActiva) else null
+                viewModel.actualizarPublicacion(
+                    idPublicacion = pub.id,
+                    descripcion = nuevaDescripcion,
+                    idCiudad = pub.ciudad,
+                    urisImagenes = nuevasImagenes,
+                    idEmpresaContexto = ctxEmpresa
+                ) { exito, error, _ ->
+                    estaGuardandoEdicion = false
+                    if (exito) {
+                        Toast.makeText(contexto, cadenas.publicacionActualizada, Toast.LENGTH_SHORT).show()
+                        publicacionParaEditar = null
+                    } else {
+                        Toast.makeText(contexto, error ?: "Error al actualizar", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            estaGuardando = estaGuardandoEdicion
+        )
+    }
+
+    if (publicacionParaEliminar != null) {
+        DialogoConfirmarEliminarPublicacion(
+            publicacion = publicacionParaEliminar!!,
+            alCerrar = { publicacionParaEliminar = null },
+            alConfirmar = {
+                val pub = publicacionParaEliminar ?: return@DialogoConfirmarEliminarPublicacion
+                estaEliminando = true
+                val ctxEmpresa = if (pub.esPublicacionEmpresa) (pub.empresa ?: pub.empresaId ?: idEmpresaActiva) else null
+                viewModel.eliminarPublicacion(
+                    idPublicacion = pub.id,
+                    idEmpresaContexto = ctxEmpresa
+                ) { exito, error ->
+                    estaEliminando = false
+                    if (exito) {
+                        Toast.makeText(contexto, cadenas.publicacionEliminada, Toast.LENGTH_SHORT).show()
+                        publicacionParaEliminar = null
+                    } else {
+                        Toast.makeText(contexto, error ?: "Error al eliminar", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            estaEliminando = estaEliminando
         )
     }
 }
@@ -218,7 +298,10 @@ fun TarjetaPublicacion(
     alHacerClicEnLike: () -> Unit,
     alHacerClicEnComentar: () -> Unit,
     alHacerClicEnImagen: (List<String>, Int) -> Unit,
-    alHacerClicEnAutor: ((Publicacion) -> Unit)? = null
+    alHacerClicEnAutor: ((Publicacion) -> Unit)? = null,
+    puedeEditarOEliminar: Boolean = false,
+    alActualizar: ((Publicacion) -> Unit)? = null,
+    alEliminar: ((Publicacion) -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -232,82 +315,90 @@ fun TarjetaPublicacion(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    .then(
-                        if (alHacerClicEnAutor != null) {
-                            Modifier.clickable { alHacerClicEnAutor(publicacion) }
-                        } else Modifier
-                    )
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val fotoAMostrar = publicacion.fotoAutorAMostrar
-                if (fotoAMostrar != null) {
-                    AsyncImage(
-                        model = fotoAMostrar.aUrlCompleta(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(GrisClaro.copy(alpha = 0.2f)),
-                        contentScale = ContentScale.Crop,
-                        error = androidx.compose.ui.graphics.painter.ColorPainter(AzulPetroleo.copy(alpha = 0.2f))
-                    )
-                } else if (publicacion.esPublicacionEmpresa) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(AzulPetroleo.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(
+                            if (alHacerClicEnAutor != null) {
+                                Modifier.clickable { alHacerClicEnAutor(publicacion) }
+                            } else Modifier
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val fotoAMostrar = publicacion.fotoAutorAMostrar
+                    if (fotoAMostrar != null) {
+                        AsyncImage(
+                            model = fotoAMostrar.aUrlCompleta(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(GrisClaro.copy(alpha = 0.2f)),
+                            contentScale = ContentScale.Crop,
+                            error = androidx.compose.ui.graphics.painter.ColorPainter(AzulPetroleo.copy(alpha = 0.2f))
+                        )
+                    } else if (publicacion.esPublicacionEmpresa) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(AzulPetroleo.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Business,
+                                contentDescription = "Empresa",
+                                modifier = Modifier.size(24.dp),
+                                tint = AzulPetroleo
+                            )
+                        }
+                    } else {
                         Icon(
-                            Icons.Default.Business,
-                            contentDescription = "Empresa",
-                            modifier = Modifier.size(24.dp),
-                            tint = AzulPetroleo
+                            Icons.Default.AccountCircle,
+                            null,
+                            modifier = Modifier.size(40.dp),
+                            tint = AzulPetroleo.copy(alpha = 0.5f)
                         )
                     }
-                } else {
-                    Icon(
-                        Icons.Default.AccountCircle,
-                        null,
-                        modifier = Modifier.size(40.dp),
-                        tint = AzulPetroleo.copy(alpha = 0.5f)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = publicacion.nombreAutorAMostrar,
-                            style = TextoBoton,
-                            color = AzulPetroleo
-                        )
-                        if (publicacion.esPublicacionEmpresa) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Surface(
-                                color = GoldColor.copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    text = "Empresa",
-                                    fontSize = 10.sp,
-                                    color = AzulPetroleo,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = publicacion.nombreAutorAMostrar,
+                                style = TextoBoton,
+                                color = AzulPetroleo
+                            )
+                            if (publicacion.esPublicacionEmpresa) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    color = GoldColor.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "Empresa",
+                                        fontSize = 10.sp,
+                                        color = AzulPetroleo,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
-                    }
-                    if (publicacion.ciudadNombre != null) {
-                        Text(
-                            text = publicacion.ciudadNombre,
-                            style = LeyendaFechas,
-                            color = GrisClaro
-                        )
+                        if (publicacion.ciudadNombre != null) {
+                            Text(
+                                text = publicacion.ciudadNombre,
+                                style = LeyendaFechas,
+                                color = GrisClaro
+                            )
+                        }
                     }
                 }
+
                 if (publicacion.eventoTitulo != null) {
+                    Spacer(modifier = Modifier.width(6.dp))
                     Surface(
                         color = GoldColor.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(12.dp)
@@ -319,6 +410,51 @@ fun TarjetaPublicacion(
                             Icon(Icons.Default.Event, null, tint = GoldColor, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(publicacion.eventoTitulo, fontSize = 10.sp, color = GoldColor, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                if (puedeEditarOEliminar) {
+                    var menuOpcionesExpandido by remember { mutableStateOf(false) }
+                    val cadenas = LocalCadenas.current
+
+                    Box {
+                        IconButton(
+                            onClick = { menuOpcionesExpandido = true },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Opciones",
+                                tint = AzulPetroleo
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = menuOpcionesExpandido,
+                            onDismissRequest = { menuOpcionesExpandido = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(cadenas.actualizar, color = AzulPetroleo, fontWeight = FontWeight.Medium) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, contentDescription = null, tint = AzulPetroleo, modifier = Modifier.size(20.dp))
+                                },
+                                onClick = {
+                                    menuOpcionesExpandido = false
+                                    alActualizar?.invoke(publicacion)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(cadenas.eliminar, color = Color(0xFFD32F2F), fontWeight = FontWeight.Medium) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD32F2F), modifier = Modifier.size(20.dp))
+                                },
+                                onClick = {
+                                    menuOpcionesExpandido = false
+                                    alEliminar?.invoke(publicacion)
+                                }
+                            )
                         }
                     }
                 }
