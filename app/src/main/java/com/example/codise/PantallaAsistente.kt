@@ -1083,7 +1083,7 @@ fun BarraEntradaMensaje(
                         Text(
                             text = cadenas.asistentePreguntale,
                             color = Color.Gray,
-                            fontSize = 14.sp
+                            style = CuerpoTexto
                         )
                     },
                     modifier = Modifier.weight(1f),
@@ -1399,9 +1399,10 @@ fun ContenidoMensajeMarkdown(
                             esEncabezado = true
                         ),
                         color = if (esUsuario) BlancoBase else AzulPetroleo,
+                        fontFamily = LoraFontFamily,
                         fontSize = tamanoFuente,
                         fontWeight = FontWeight.Bold,
-                        lineHeight = (tamanoFuente.value + 5).sp,
+                        lineHeight = (tamanoFuente.value + 6).sp,
                         modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
                     )
                 }
@@ -1461,8 +1462,10 @@ fun ContenidoMensajeMarkdown(
                             esUsuario = esUsuario
                         ),
                         color = if (esUsuario) BlancoBase else NegroPuro,
-                        fontSize = 14.5.sp,
-                        lineHeight = 20.sp
+                        fontFamily = RobotoFontFamily,
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp,
+                        modifier = Modifier.padding(vertical = 1.dp)
                     )
                 }
             }

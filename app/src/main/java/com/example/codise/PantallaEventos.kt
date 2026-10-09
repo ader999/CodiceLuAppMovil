@@ -111,7 +111,7 @@ fun PantallaEventos(
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(cadenas.reintentar, fontWeight = FontWeight.Bold)
+                                    Text(cadenas.reintentar, style = TextoBoton)
                                 }
                             }
                         }
@@ -164,13 +164,12 @@ fun EstadoEventosVacio(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = cadenas.sinEventosProximos,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
+            style = SubtituloH2,
             color = AzulPetroleo
         )
         Text(
             text = cadenas.vuelveMasTardeEventos,
-            fontSize = 14.sp,
+            style = CuerpoTexto,
             color = GrisClaro
         )
     }
@@ -202,8 +201,7 @@ fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
                 ) {
                     Text(
                         text = evento.titulo,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = SubtituloH2,
                         color = AzulPetroleo,
                         modifier = Modifier.weight(1f)
                     )
@@ -228,7 +226,7 @@ fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.LocationOn, null, tint = GoldColor, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = evento.ubicacion, fontSize = 14.sp, color = NegroPuro)
+                    Text(text = evento.ubicacion, style = LeyendaFechas, color = NegroPuro)
                 }
                 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -238,7 +236,7 @@ fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${evento.fechaInicio.take(10)} - ${evento.fechaFin.take(10)}",
-                        fontSize = 14.sp,
+                        style = LeyendaFechas,
                         color = NegroPuro
                     )
                 }
@@ -247,7 +245,7 @@ fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
                 
                 Text(
                     text = evento.descripcion,
-                    fontSize = 14.sp,
+                    style = CuerpoTexto,
                     color = NegroPuro.copy(alpha = 0.7f),
                     maxLines = 3,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -262,7 +260,7 @@ fun TarjetaEvento(evento: Evento, alHacerClicEnVerMas: (Evento) -> Unit) {
                     modifier = Modifier.align(Alignment.End),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text(cadenas.verMas, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(cadenas.verMas, style = TextoBoton)
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(16.dp))
                 }

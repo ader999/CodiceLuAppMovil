@@ -1227,7 +1227,7 @@ fun TarjetaPrincipal(
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = cadenas.reintentar, fontWeight = FontWeight.Bold)
+                                    Text(text = cadenas.reintentar, style = TextoBoton)
                                 }
                             }
                         }
@@ -1277,13 +1277,13 @@ fun ElementoUbicacion(nombre: String, alHacerClicEnPin: () -> Unit, alHacerClicE
             Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = nombre,
-                fontSize = 22.sp,
+                style = SubtituloH2,
                 color = NegroPuro,
-                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
+
         
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = alHacerClicEnPin) {

@@ -34,10 +34,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Restaurant
-import com.example.codise.ui.theme.AzulPetroleo
-import com.example.codise.ui.theme.Codice路Theme
-import com.example.codise.ui.theme.GoldColor
-import com.example.codise.ui.theme.NegroPuro
+import com.example.codise.ui.theme.*
 import com.example.codise.utils.LocalCadenas
 import com.example.codise.utils.aUrlCompleta
 
@@ -105,8 +102,7 @@ fun PantallaDetalleCiudad(
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = ciudad.nombre,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
+                style = TitularPrincipal,
                 color = AzulPetroleo
             )
 
@@ -114,13 +110,12 @@ fun PantallaDetalleCiudad(
 
             Text(
                 text = cadenas.descripcion,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = SubtituloH2,
                 color = AzulPetroleo
             )
             Text(
                 text = ciudad.descripcion,
-                fontSize = 16.sp,
+                style = CuerpoTexto,
                 color = NegroPuro,
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -177,8 +172,7 @@ fun PantallaDetalleCiudad(
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = cadenas.galeriaMultimedia,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = SubtituloH2,
                     color = AzulPetroleo
                 )
 
@@ -349,8 +343,7 @@ private fun EncabezadoTipoGaleria(
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = tipo,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = SubtituloH2.copy(fontSize = 17.sp, lineHeight = 22.sp),
                 color = AzulPetroleo
             )
         }

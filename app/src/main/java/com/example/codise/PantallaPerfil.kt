@@ -147,8 +147,7 @@ fun ContenidoPerfil(
             Text(
                 text = cadenas.editarPerfil,
                 color = AzulPetroleo,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
+                style = TitularPrincipal,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
@@ -210,7 +209,7 @@ fun ContenidoPerfil(
                 if (estaCargandoPerfil) {
                     CircularProgressIndicator(color = GoldColor, modifier = Modifier.size(24.dp))
                 } else {
-                    Text(cadenas.guardar, color = GoldColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(cadenas.guardar, color = GoldColor, style = TextoBoton)
                 }
             }
 
@@ -225,7 +224,7 @@ fun ContenidoPerfil(
                 border = androidx.compose.foundation.BorderStroke(1.dp, AzulPetroleo),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(cadenas.cancelar, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(cadenas.cancelar, style = TextoBoton)
             }
         } else {
             val esProtagonistaEfectivo = usuario.esProtagonista || empresasUsuario.isNotEmpty()
@@ -235,8 +234,7 @@ fun ContenidoPerfil(
                 Text(
                     text = empresaActiva.nombre,
                     color = AzulPetroleo,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    style = TitularPrincipal
                 )
 
                 Text(
@@ -375,8 +373,7 @@ fun ContenidoPerfil(
                 Text(
                     text = nombreCompleto.ifBlank { usuario.nombreUsuario.orEmpty() },
                     color = AzulPetroleo,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    style = TitularPrincipal
                 )
 
                 Text(
@@ -634,7 +631,7 @@ fun ContenidoPerfil(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = AzulPetroleo)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Registrar otra empresa", color = AzulPetroleo, fontWeight = FontWeight.Bold)
+                    Text("Registrar otra empresa", color = AzulPetroleo, style = TextoBoton)
                 }
             }
 
@@ -646,13 +643,12 @@ fun ContenidoPerfil(
                 Text(
                     "¿Eres dueño de un negocio?",
                     color = AzulPetroleo,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    style = SubtituloH2
                 )
                 Text(
                     "Regístrate como protagonista para publicar tus eventos y atraer más visitantes.",
                     color = NegroPuro.copy(alpha = 0.7f),
-                    fontSize = 14.sp,
+                    style = CuerpoTexto,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 
@@ -666,7 +662,7 @@ fun ContenidoPerfil(
                 ) {
                     Icon(Icons.Default.Business, contentDescription = null, tint = AzulPetroleo)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Convertirse en Protagonista", color = AzulPetroleo, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Convertirse en Protagonista", color = AzulPetroleo, style = TextoBoton)
                 }
             }
 

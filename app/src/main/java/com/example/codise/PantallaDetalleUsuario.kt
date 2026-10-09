@@ -205,8 +205,7 @@ fun PantallaDetalleUsuario(
                 }
                 Text(
                     text = titulo,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = TitularPrincipal.copy(fontSize = 20.sp, lineHeight = 26.sp),
                     color = AzulPetroleo,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -302,8 +301,7 @@ fun PantallaDetalleUsuario(
                                 }
                                 Text(
                                     text = nombreMostrar,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 19.sp,
+                                    style = SubtituloH2,
                                     color = AzulPetroleo
                                 )
 
@@ -399,9 +397,8 @@ fun PantallaDetalleUsuario(
                             ) {
                                 Text(
                                     text = descripcionTexto,
-                                    fontSize = 13.sp,
+                                    style = CuerpoTexto,
                                     color = NegroPuro.copy(alpha = 0.8f),
-                                    lineHeight = 18.sp,
                                     modifier = Modifier.padding(12.dp)
                                 )
                             }
@@ -587,8 +584,7 @@ fun PantallaDetalleUsuario(
                 ) {
                     Text(
                         text = "Publicaciones",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = SubtituloH2,
                         color = AzulPetroleo
                     )
                     Surface(

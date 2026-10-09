@@ -81,8 +81,7 @@ fun PantallaDetalleCircuito(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = "Comercios en Ruta",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
+                            style = SubtituloH2,
                             color = AzulPetroleo,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
@@ -103,8 +102,7 @@ fun PantallaDetalleCircuito(
             item {
                 Text(
                     cadenas.puntosDelRecorrido,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = SubtituloH2,
                     color = AzulPetroleo,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
@@ -190,16 +188,14 @@ fun EncabezadoCircuito(circuito: Circuito) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = circuito.nombre,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
+                style = TitularPrincipal,
                 color = AzulPetroleo
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = circuito.descripcion,
-                fontSize = 16.sp,
-                color = NegroPuro,
-                lineHeight = 24.sp
+                style = CuerpoTexto,
+                color = NegroPuro
             )
             Spacer(modifier = Modifier.height(12.dp))
             Row(
@@ -259,8 +255,7 @@ fun TarjetaDetallePuntoInteres(
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = punto.nombre,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = SubtituloH2,
                     color = AzulPetroleo,
                     modifier = Modifier.weight(1f)
                 )
@@ -275,7 +270,7 @@ fun TarjetaDetallePuntoInteres(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = punto.descripcion,
-                fontSize = 14.sp,
+                style = CuerpoTexto,
                 color = NegroPuro.copy(alpha = 0.8f)
             )
 
@@ -313,7 +308,7 @@ fun TarjetaDetallePuntoInteres(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         if (estaValidado) cadenas.verificado else if (estaVisitado) cadenas.visitado else cadenas.yaLoVisite,
-                        fontSize = 12.sp
+                        style = TextoBoton.copy(fontSize = 13.sp, lineHeight = 16.sp)
                     )
                 }
 
@@ -336,7 +331,7 @@ fun TarjetaDetallePuntoInteres(
                 ) {
                     Icon(Icons.Default.Directions, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(cadenas.comoLlegar, fontSize = 12.sp)
+                    Text(cadenas.comoLlegar, style = TextoBoton.copy(fontSize = 13.sp, lineHeight = 16.sp), color = AzulPetroleo)
                 }
             }
         }

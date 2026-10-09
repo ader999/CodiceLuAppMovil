@@ -18,10 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codise.data.IdiomaApp
-import com.example.codise.ui.theme.AzulPetroleo
-import com.example.codise.ui.theme.BlancoBase
-import com.example.codise.ui.theme.GoldColor
-import com.example.codise.ui.theme.NegroPuro
+import com.example.codise.ui.theme.*
 import com.example.codise.utils.LocalCadenas
 
 @Composable
@@ -45,9 +42,8 @@ fun DialogoSeleccionIdioma(
         title = {
             Text(
                 text = cadenas.seleccionarIdioma,
-                fontWeight = FontWeight.Bold,
-                color = AzulPetroleo,
-                fontSize = 20.sp
+                style = SubtituloH2,
+                color = AzulPetroleo
             )
         },
         text = {
@@ -120,7 +116,7 @@ fun DialogoSeleccionIdioma(
                 Text(
                     text = cadenas.cerrar,
                     color = AzulPetroleo,
-                    fontWeight = FontWeight.Bold
+                    style = TextoBoton
                 )
             }
         },

@@ -105,8 +105,7 @@ fun PantallaLogin(
             ) {
                 Text(
                     text = if (modoRegistro) cadenas.crearCuenta else cadenas.iniciarSesion,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = TitularPrincipal,
                     color = AzulPetroleo
                 )
 
@@ -391,8 +390,7 @@ fun PantallaLogin(
                     ) {
                         Text(
                             text = if (modoRegistro) cadenas.crearCuenta.uppercase() else cadenas.iniciarSesion.uppercase(),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
+                            style = TextoBoton,
                             color = BlancoBase
                         )
                     }
@@ -478,8 +476,7 @@ fun PantallaLogin(
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = cadenas.continuarConGoogle,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
+                            style = TextoBoton,
                             color = AzulPetroleo
                         )
                     }

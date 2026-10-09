@@ -121,7 +121,7 @@ fun PantallaDetalleEvento(
                 ) {
                     Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(cadenas.asistir, color = AzulPetroleo, fontWeight = FontWeight.Bold)
+                    Text(cadenas.asistir, color = AzulPetroleo, style = TextoBoton)
                 }
 
                 Button(
@@ -145,7 +145,7 @@ fun PantallaDetalleEvento(
                 ) {
                     Icon(Icons.Default.Place, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(cadenas.llegar, color = GoldColor, fontWeight = FontWeight.Bold)
+                    Text(cadenas.llegar, color = GoldColor, style = TextoBoton)
                 }
             }
 
@@ -158,8 +158,7 @@ fun PantallaDetalleEvento(
             ) {
                 Text(
                     text = evento.titulo,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = TitularPrincipal,
                     color = AzulPetroleo,
                     modifier = Modifier.weight(1f)
                 )
@@ -194,16 +193,14 @@ fun PantallaDetalleEvento(
 
             Text(
                 text = cadenas.descripcion,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
+                style = SubtituloH2,
                 color = AzulPetroleo
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = evento.descripcion,
-                fontSize = 15.sp,
-                color = NegroPuro.copy(alpha = 0.8f),
-                lineHeight = 22.sp
+                style = CuerpoTexto,
+                color = NegroPuro.copy(alpha = 0.8f)
             )
             
             if (evento.precioEntrada != "0.00" && !evento.esGratuito) {
@@ -220,8 +217,7 @@ fun PantallaDetalleEvento(
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = cadenas.galeriaMultimedia,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = SubtituloH2,
                     color = AzulPetroleo
                 )
 
@@ -363,8 +359,8 @@ fun ElementoDetalle(icono: androidx.compose.ui.graphics.vector.ImageVector, etiq
         Icon(icono, null, tint = GoldColor, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(8.dp))
         Column {
-            Text(text = etiqueta, fontSize = 12.sp, color = GrisClaro, fontWeight = FontWeight.Medium)
-            Text(text = valor, fontSize = 15.sp, color = NegroPuro)
+            Text(text = etiqueta, style = LeyendaFechas, color = GrisClaro)
+            Text(text = valor, style = CuerpoTexto, color = NegroPuro)
         }
     }
 }

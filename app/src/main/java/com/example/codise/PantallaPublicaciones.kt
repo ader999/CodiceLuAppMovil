@@ -121,7 +121,7 @@ fun PantallaPublicaciones(
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(cadenas.reintentar, fontWeight = FontWeight.Bold)
+                                    Text(cadenas.reintentar, style = TextoBoton)
                                 }
                             }
                         }
@@ -280,9 +280,8 @@ fun TarjetaPublicacion(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = publicacion.nombreAutorAMostrar,
-                            fontWeight = FontWeight.Bold,
-                            color = AzulPetroleo,
-                            fontSize = 15.sp
+                            style = TextoBoton,
+                            color = AzulPetroleo
                         )
                         if (publicacion.esPublicacionEmpresa) {
                             Spacer(modifier = Modifier.width(6.dp))
@@ -303,7 +302,7 @@ fun TarjetaPublicacion(
                     if (publicacion.ciudadNombre != null) {
                         Text(
                             text = publicacion.ciudadNombre,
-                            fontSize = 12.sp,
+                            style = LeyendaFechas,
                             color = GrisClaro
                         )
                     }
@@ -424,7 +423,7 @@ fun TarjetaPublicacion(
                 Text(
                     text = publicacion.descripcion,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                    fontSize = 14.sp,
+                    style = CuerpoTexto,
                     color = NegroPuro.copy(alpha = 0.85f)
                 )
             }
@@ -488,8 +487,7 @@ fun HojaComentariosPublicacion(
             ) {
                 Text(
                     text = "${cadenas.comentarios} (${publicacion.comentarios.size})",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = SubtituloH2,
                     color = AzulPetroleo
                 )
                 IconButton(onClick = alCerrar) {

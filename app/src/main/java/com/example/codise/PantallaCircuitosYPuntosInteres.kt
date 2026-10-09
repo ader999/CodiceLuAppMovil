@@ -24,11 +24,7 @@ import com.example.codise.data.Ciudad
 import com.example.codise.data.Circuito
 import com.example.codise.data.ItemGaleria
 import com.example.codise.data.PuntoInteres
-import com.example.codise.ui.theme.AzulPetroleo
-import com.example.codise.ui.theme.BlancoBase
-import com.example.codise.ui.theme.GoldColor
-import com.example.codise.ui.theme.NegroPuro
-import com.example.codise.ui.theme.Codice路Theme
+import com.example.codise.ui.theme.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -155,8 +151,7 @@ fun TarjetaCircuito(circuito: Circuito, alHacerClicEnVerMas: (Circuito) -> Unit)
                 ) {
                     Text(
                         text = circuito.nombre,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = SubtituloH2,
                         color = AzulPetroleo,
                         modifier = Modifier.weight(1f)
                     )
@@ -172,9 +167,8 @@ fun TarjetaCircuito(circuito: Circuito, alHacerClicEnVerMas: (Circuito) -> Unit)
                 
                 Text(
                     text = circuito.descripcion,
-                    fontSize = 14.sp,
-                    color = NegroPuro.copy(alpha = 0.7f),
-                    lineHeight = 20.sp
+                    style = CuerpoTexto,
+                    color = NegroPuro.copy(alpha = 0.7f)
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -221,7 +215,7 @@ fun TarjetaCircuito(circuito: Circuito, alHacerClicEnVerMas: (Circuito) -> Unit)
                     colors = ButtonDefaults.buttonColors(containerColor = AzulPetroleo),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(cadenas.verMas, fontWeight = FontWeight.Bold)
+                    Text(cadenas.verMas, style = TextoBoton)
                 }
             }
         }
@@ -286,8 +280,7 @@ fun TarjetaPuntoInteres(punto: PuntoInteres) {
                 ) {
                     Text(
                         text = punto.nombre,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = SubtituloH2,
                         color = AzulPetroleo,
                         modifier = Modifier.weight(1f)
                     )
@@ -325,9 +318,8 @@ fun TarjetaPuntoInteres(punto: PuntoInteres) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = punto.circuitoNombre,
-                        fontSize = 12.sp,
-                        color = GoldColor,
-                        fontWeight = FontWeight.Medium
+                        style = LeyendaFechas,
+                        color = GoldColor
                     )
                 }
 
@@ -335,9 +327,8 @@ fun TarjetaPuntoInteres(punto: PuntoInteres) {
                 
                 Text(
                     text = punto.descripcion,
-                    fontSize = 14.sp,
-                    color = NegroPuro.copy(alpha = 0.7f),
-                    lineHeight = 20.sp
+                    style = CuerpoTexto,
+                    color = NegroPuro.copy(alpha = 0.7f)
                 )
                 
                 if (punto.datosHistoricos.isNotEmpty()) {

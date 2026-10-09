@@ -281,8 +281,7 @@ fun PantallaSubirEvento(
         ) {
             Text(
                 text = "Subir Nuevo Evento",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
+                style = TitularPrincipal,
                 color = AzulPetroleo
             )
 
@@ -888,7 +887,7 @@ fun PantallaSubirEvento(
                 if (estaSubiendo) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("PUBLICAR EVENTO", fontWeight = FontWeight.Bold)
+                    Text("PUBLICAR EVENTO", style = TextoBoton)
                 }
             }
         }

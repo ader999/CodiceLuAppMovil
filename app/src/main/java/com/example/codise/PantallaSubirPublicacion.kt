@@ -100,6 +100,12 @@ fun PantallaSubirPublicacion(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Text(
+                text = "Nueva Publicación",
+                style = TitularPrincipal,
+                color = AzulPetroleo
+            )
+
             if (estaSubiendo) {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -312,7 +318,7 @@ fun PantallaSubirPublicacion(
                 if (estaSubiendo) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("PUBLICAR", fontWeight = FontWeight.Bold)
+                    Text("PUBLICAR", style = TextoBoton)
                 }
             }
         }
